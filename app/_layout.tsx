@@ -16,6 +16,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800 } }} /> {/* Criar rota */}
         <Stack.Screen name="home" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
         <Stack.Screen name="login" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
+        <Stack.Screen name="recover" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
       </Stack>
     );
 }

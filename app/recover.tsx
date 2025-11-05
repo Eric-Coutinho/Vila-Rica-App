@@ -1,24 +1,28 @@
 import React, { useState } from "react";
 import {
-  View,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Platform,
+  View,
 } from "react-native";
 
-export default function LoginScreen() {
+export default function RecoverScreen() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
 
   return (
     <View style={styles.page}>
       <View style={styles.container}>
-        <Text style={styles.title}>Fazer Login</Text>
+        <Text style={styles.title}>Recuperar senha</Text>
+
+        <Text style={styles.subtitle}>
+          Um código será enviado para o email utilizado no cadastro, com esse
+          código será possível redefinir sua senha.
+        </Text>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>Email de cadastro</Text>
           <TextInput
             style={styles.input}
             placeholder="Email@example.com"
@@ -29,41 +33,20 @@ export default function LoginScreen() {
             onChangeText={setEmail}
           />
 
-          <Text style={[styles.label, { marginTop: 16 }]}>Senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Senha..."
-            placeholderTextColor="#9b9b9b"
-            secureTextEntry
-            value={senha}
-            onChangeText={setSenha}
-          />
-
-          <View style={styles.forgotRow}>
-            <Text style={styles.forgotText}>Esqueceu a senha?</Text>
-            <TouchableOpacity
-              onPress={() => {
-                /* navegar */
-              }}
-            >
-              <Text style={styles.forgotLink}>Clique aqui</Text>
-            </TouchableOpacity>
-          </View>
-
           <TouchableOpacity
             style={[styles.button, styles.buttonPrimary]}
             onPress={() => {
-              /* login */
+              /* envio formulario */
             }}
             activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Entrar</Text>
+            <Text style={styles.buttonText}>Continuar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.buttonDanger]}
             onPress={() => {
-              /* limpar */
+              /* cancelar */
             }}
             activeOpacity={0.8}
           >
@@ -84,13 +67,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    paddingHorizontal: 20
+    paddingHorizontal: 20,
   },
   title: {
     marginTop: 28,
     fontSize: 32,
     fontWeight: "700",
     marginBottom: 50,
+  },
+  subtitle: {
+    width: "85%",
+    fontSize: 22,
+    fontWeight: "500",
+    textAlign: "justify",
+    marginBottom: 20,
   },
   form: {
     width: "85%",
@@ -99,7 +89,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 20,
     marginBottom: 6,
-    fontWeight: "500"
+    fontWeight: "500",
   },
   input: {
     height: 42,
@@ -108,7 +98,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 12,
     backgroundColor: "#white",
-    fontSize: 22
+    fontSize: 22,
   },
   forgotRow: {
     flexDirection: "row",
@@ -135,11 +125,11 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: "#4b77b9",
-    marginTop: 48
+    marginTop: 48,
   },
   buttonDanger: {
     backgroundColor: "#b85a56",
-    marginTop: 48
+    marginTop: 48,
   },
   buttonText: {
     color: "#fff",
