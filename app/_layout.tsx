@@ -17,6 +17,8 @@ export default function RootLayout() {
         <Stack.Screen name="home" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
         <Stack.Screen name="login" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
         <Stack.Screen name="recover" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
+        <Stack.Screen name="code" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
+        <Stack.Screen name="redefine" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
       </Stack>
     );
 }

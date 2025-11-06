@@ -1,54 +1,59 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  StyleSheet,
+  Platform,
 } from "react-native";
 
-export default function RecoverScreen() {
-  const [email, setEmail] = useState("");
+export default function RedefineScreen() {
   const [senha, setSenha] = useState("");
+  const [newSenha, setNewSenha] = useState("");
   const router = useRouter();
 
   return (
     <View style={styles.page}>
       <View style={styles.container}>
-        <Text style={styles.title}>Recuperar senha</Text>
-
-        <Text style={styles.subtitle}>
-          Um código será enviado para o email utilizado no cadastro, com esse
-          código será possível redefinir sua senha.
-        </Text>
+        <Text style={styles.title}>Redefinir Senha</Text>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Email de cadastro</Text>
+          <Text style={styles.label}>Nova senha</Text>
           <TextInput
             style={styles.input}
-            placeholder="Email@example.com"
+            placeholder="Senha..."
             placeholderTextColor="#9b9b9b"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
+            secureTextEntry
+            value={senha}
+            onChangeText={setSenha}
+          />
+
+          <Text style={[styles.label, { marginTop: 16 }]}>Confirmar senha</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Senha..."
+            placeholderTextColor="#9b9b9b"
+            secureTextEntry
+            value={newSenha}
+            onChangeText={setNewSenha}
           />
 
           <TouchableOpacity
             style={[styles.button, styles.buttonPrimary]}
             onPress={() => {
-              router.push('/code')
+                router.push('/login')
             }}
             activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Continuar</Text>
+            <Text style={styles.buttonText}>Redefinir</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.buttonDanger]}
             onPress={() => {
-              router.push('/')
+                router.push('/')
             }}
             activeOpacity={0.8}
           >
@@ -77,13 +82,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 50,
   },
-  subtitle: {
-    width: "85%",
-    fontSize: 22,
-    fontWeight: "500",
-    textAlign: "justify",
-    marginBottom: 20,
-  },
   form: {
     width: "85%",
     marginTop: 18,
@@ -102,22 +100,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#white",
     fontSize: 22,
   },
-  forgotRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 14,
-  },
-  forgotText: {
-    fontSize: 19,
-  },
-  forgotLink: {
-    marginLeft: 6,
-    color: "blue",
-    textDecorationLine: "underline",
-    fontSize: 19,
-  },
-
   button: {
     height: 48,
     borderRadius: 8,

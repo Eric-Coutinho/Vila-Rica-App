@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   View,
@@ -11,6 +12,7 @@ import {
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const router = useRouter();
 
   return (
     <View style={styles.page}>
@@ -43,7 +45,7 @@ export default function LoginScreen() {
             <Text style={styles.forgotText}>Esqueceu a senha?</Text>
             <TouchableOpacity
               onPress={() => {
-                /* navegar */
+                router.push('/recover')
               }}
             >
               <Text style={styles.forgotLink}>Clique aqui</Text>
