@@ -1,18 +1,84 @@
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { useRouter } from "expo-router";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Platform,
+  ActivityIndicator,
 } from "react-native";
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
+type ApiUser = {
+  _id?: string;
+  email?: string;
+  name?: string;
+  recoverCode?: string;
+};
+
+type ApiResponse =
+  | { ok: true; user: ApiUser }
+  | { ok: false; message?: string };
+
+const LoginScreen: React.FC = () => {
+  const [email, setEmail] = useState<string>("");
+  const [senha, setSenha] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+
+  const API_BASE = "http://localhost:3000";
+
+  const handleLogin = async () => {
+    if (!email.trim() || !senha) {
+      alert("Erro - Preencha email e senha");
+      return;
+    }
+  
+    try {
+      setLoading(true);
+  
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password: senha }),
+      });
+  
+      const raw = await res.text();
+      console.log("raw:", raw);
+  
+      let data: ApiResponse | null = null;
+      try {
+        data = raw ? (JSON.parse(raw) as ApiResponse) : null;
+      } catch (parseErr) {
+        console.warn("[Login] erro ao parsear JSON:", parseErr);
+      }
+      console.log("[Login] body parsed:", data);
+  
+      if (!data) {
+        alert(`Erro - Resposta inválida do servidor: ${raw || "vazia"}`);
+        return;
+      }
+  
+      if (!data.ok) {
+        alert(`Erro - ${data.message ?? "Falha no login"}`);
+        return;
+      }
+  
+      alert(`Sucesso - Bem-vindo, ${data.user?.name ?? data.user?.email}`);
+      router.push("/home");
+    } catch (err: any) {
+      console.error("Login fetch error:", err);
+      alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
+  const handleCancel = () => {
+    setEmail("");
+    setSenha("");
+  };
 
   return (
     <View style={styles.page}>
@@ -45,7 +111,7 @@ export default function LoginScreen() {
             <Text style={styles.forgotText}>Esqueceu a senha?</Text>
             <TouchableOpacity
               onPress={() => {
-                router.push('/recover')
+                router.push("/recover");
               }}
             >
               <Text style={styles.forgotLink}>Clique aqui</Text>
@@ -54,20 +120,22 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={[styles.button, styles.buttonPrimary]}
-            onPress={() => {
-              /* login */
-            }}
+            onPress={handleLogin}
             activeOpacity={0.8}
+            disabled={loading}
           >
-            <Text style={styles.buttonText}>Entrar</Text>
+            {loading ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.buttonText}>Entrar</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.buttonDanger]}
-            onPress={() => {
-              /* limpar */
-            }}
+            onPress={handleCancel}
             activeOpacity={0.8}
+            disabled={loading}
           >
             <Text style={styles.buttonText}>Cancelar</Text>
           </TouchableOpacity>
@@ -75,7 +143,9 @@ export default function LoginScreen() {
       </View>
     </View>
   );
-}
+};
+
+export default LoginScreen;
 
 const styles = StyleSheet.create({
   page: {
@@ -86,7 +156,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    paddingHorizontal: 20
+    paddingHorizontal: 20,
   },
   title: {
     marginTop: 28,
@@ -101,7 +171,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 20,
     marginBottom: 6,
-    fontWeight: "500"
+    fontWeight: "500",
   },
   input: {
     height: 42,
@@ -109,8 +179,8 @@ const styles = StyleSheet.create({
     borderColor: "#747474",
     borderRadius: 6,
     paddingHorizontal: 12,
-    backgroundColor: "#white",
-    fontSize: 22
+    backgroundColor: "white",
+    fontSize: 22,
   },
   forgotRow: {
     flexDirection: "row",
@@ -137,11 +207,11 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: "#4b77b9",
-    marginTop: 48
+    marginTop: 48,
   },
   buttonDanger: {
     backgroundColor: "#b85a56",
-    marginTop: 48
+    marginTop: 48,
   },
   buttonText: {
     color: "#fff",
