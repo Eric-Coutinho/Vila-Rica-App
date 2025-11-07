@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { useRouter } from "expo-router";
 import {
   StyleSheet,
   Text,
@@ -8,10 +8,71 @@ import {
   View,
 } from "react-native";
 
-export default function RecoverScreen() {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
+type RecoverResponse =
+  | { ok: true; message?: string; code?: string }
+  | { ok: false; message?: string };
+
+const RecoverScreen: React.FC = () => {
+  const [email, setEmail] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+
+  const API_BASE = "http://localhost:3000";
+
+  const handleContinue = async () => {
+    if (!email.trim()) {
+      alert("Preencha o email");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log("Recover POST", `${API_BASE}/recover`, {
+        email: email.trim(),
+      });
+
+      const res = await fetch(`${API_BASE}/recover`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const raw = await res.text();
+      console.log("Recover status:", res.status, "raw:", raw);
+
+      let data: RecoverResponse | null = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        console.warn("Recover parse error", e);
+      }
+
+      if (!data) {
+        alert("Resposta inválida do servidor: " + raw);
+        return;
+      }
+
+      if (!data.ok) {
+        alert(data.message ?? "Falha na recuperação");
+        return;
+      }
+
+      if ("code" in data && data.code) {
+        alert(
+          `Código gerado: ${data.code} (apenas dev). Verifique seu email em produção.`
+        );
+      } else {
+        alert(data.message ?? "Código enviado por email");
+      }
+
+      router.push({ pathname: "/code", params: { email: email.trim() } });
+    } catch (err: any) {
+      console.error("[Recover] error:", err);
+      alert("Erro de conexão: " + (err?.message ?? String(err)));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.page}>
@@ -37,20 +98,18 @@ export default function RecoverScreen() {
 
           <TouchableOpacity
             style={[styles.button, styles.buttonPrimary]}
-            onPress={() => {
-              router.push('/code')
-            }}
+            onPress={handleContinue}
             activeOpacity={0.8}
+            disabled={loading}
           >
             <Text style={styles.buttonText}>Continuar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.buttonDanger]}
-            onPress={() => {
-              router.push('/')
-            }}
+            onPress={() => router.push("/")}
             activeOpacity={0.8}
+            disabled={loading}
           >
             <Text style={styles.buttonText}>Cancelar</Text>
           </TouchableOpacity>
@@ -58,7 +117,9 @@ export default function RecoverScreen() {
       </View>
     </View>
   );
-}
+};
+
+export default RecoverScreen;
 
 const styles = StyleSheet.create({
   page: {
@@ -99,25 +160,9 @@ const styles = StyleSheet.create({
     borderColor: "#747474",
     borderRadius: 6,
     paddingHorizontal: 12,
-    backgroundColor: "#white",
+    backgroundColor: "white",
     fontSize: 22,
   },
-  forgotRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 14,
-  },
-  forgotText: {
-    fontSize: 19,
-  },
-  forgotLink: {
-    marginLeft: 6,
-    color: "blue",
-    textDecorationLine: "underline",
-    fontSize: 19,
-  },
-
   button: {
     height: 48,
     borderRadius: 8,

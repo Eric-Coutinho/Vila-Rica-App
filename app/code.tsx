@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams  } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   View,
@@ -9,6 +9,7 @@ import {
   Platform,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
+  ActivityIndicator,
 } from "react-native";
 
 interface CodigoScreenProps {
@@ -23,9 +24,15 @@ export default function CodigoScreen({
   onCancel,
 }: CodigoScreenProps) {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const emailParam = (params?.email as string) || undefined;
+
   const LENGTH = length;
   const [code, setCode] = useState<string[]>(Array(LENGTH).fill(""));
   const inputsRef = useRef<Array<TextInput | null>>(Array(LENGTH).fill(null));
+  const [loading, setLoading] = useState(false);
+
+  const API_BASE = "http://localhost:3000";
 
   const handleChange = (text: string, idx: number) => {
     const clean = text.replace(/\s+/g, "");
@@ -61,21 +68,74 @@ export default function CodigoScreen({
         const newCode = [...code];
         newCode[idx - 1] = "";
         setCode(newCode);
+      } else {
+        const newCode = [...code];
+        newCode[idx] = "";
+        setCode(newCode);
       }
     }
   };
 
-  const handleContinue = () => {
-    router.push('/redefine')
+  const handleContinue = async () => {
     const joined = code.join("");
     if (joined.length < LENGTH) {
+      alert(`Erro - Preencha o código de ${LENGTH} caracteres.`);
       return;
     }
-    onContinue?.(joined);
+
+    const email = emailParam;
+    if (!email) {
+      alert(
+        "Email não fornecido. Volte para a tela de recuperação e informe seu email."
+      );
+      router.push("/recover");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), code: joined }),
+      });
+
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        console.warn("parse verify-code response error", e);
+      }
+
+      if (!data) {
+        alert("Erro - Resposta inválida do servidor: " + raw);
+        return;
+      }
+
+      if (!data.ok) {
+        alert(`Erro - ${data.message ?? "Código inválido"}`);
+        return;
+      }
+
+      alert(`Sucesso - ${data.message ?? "Código válido"}`);
+      onContinue?.(joined);
+
+      router.push({
+        pathname: "/redefine",
+        params: { email: email.trim(), code: joined },
+      });
+    } catch (err: any) {
+      console.error("verify-code error:", err);
+      alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
     onCancel?.();
+    router.push("/"); // volta pra tela inicial
   };
 
   return (
@@ -114,14 +174,20 @@ export default function CodigoScreen({
           style={[styles.button, styles.buttonPrimary]}
           onPress={handleContinue}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>Continuar</Text>
+          {loading ? (
+            <ActivityIndicator />
+          ) : (
+            <Text style={styles.buttonText}>Continuar</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, styles.buttonDanger]}
           onPress={handleCancel}
           activeOpacity={0.8}
+          disabled={loading}
         >
           <Text style={styles.buttonText}>Cancelar</Text>
         </TouchableOpacity>
