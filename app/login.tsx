@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -50,9 +51,9 @@ const LoginScreen: React.FC = () => {
       try {
         data = raw ? (JSON.parse(raw) as ApiResponse) : null;
       } catch (parseErr) {
-        console.warn("[Login] erro ao parsear JSON:", parseErr);
+        console.warn("Login erro ao parsear JSON:", parseErr);
       }
-      console.log("[Login] body parsed:", data);
+      console.log("Login body parsed:", data);
   
       if (!data) {
         alert(`Erro - Resposta inválida do servidor: ${raw || "vazia"}`);
@@ -65,7 +66,8 @@ const LoginScreen: React.FC = () => {
       }
   
       alert(`Sucesso - Bem-vindo, ${data.user?.name ?? data.user?.email}`);
-      router.push("/home");
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      router.push({ pathname: '/home', params: { name: data.user.name } })
     } catch (err: any) {
       console.error("Login fetch error:", err);
       alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
