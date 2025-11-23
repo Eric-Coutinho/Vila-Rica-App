@@ -32,7 +32,7 @@ export default function CodigoScreen({
   const inputsRef = useRef<Array<TextInput | null>>(Array(LENGTH).fill(null));
   const [loading, setLoading] = useState(false);
 
-  const API_BASE = "http://localhost:3000";
+  const API_BASE = "http://localhost:3000/api";
 
   const handleChange = (text: string, idx: number) => {
     const clean = text.replace(/\s+/g, "");
@@ -94,7 +94,7 @@ export default function CodigoScreen({
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/verify-code`, {
+      const res = await fetch(`${API_BASE}/auth/verify-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), code: joined }),
@@ -135,7 +135,7 @@ export default function CodigoScreen({
 
   const handleCancel = () => {
     onCancel?.();
-    router.push("/"); // volta pra tela inicial
+    router.push("/");
   };
 
   return (

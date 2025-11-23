@@ -19,7 +19,7 @@ const RedefineScreen: React.FC = () => {
   const [newSenha, setNewSenha] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
-  const API_BASE = "http://localhost:3000";
+  const API_BASE = "http://localhost:3000/api";
 
   const handleRedefine = async () => {
     if (!senha || !newSenha) {
@@ -42,7 +42,7 @@ const RedefineScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/reset`, {
+      const res = await fetch(`${API_BASE}/auth/reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -27,7 +27,7 @@ const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  const API_BASE = "http://localhost:3000";
+  const API_BASE = "http://localhost:3000/api";
 
   const handleLogin = async () => {
     if (!email.trim() || !senha) {
@@ -38,7 +38,7 @@ const LoginScreen: React.FC = () => {
     try {
       setLoading(true);
   
-      const res = await fetch(`${API_BASE}/login`, {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password: senha }),

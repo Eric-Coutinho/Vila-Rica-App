@@ -17,7 +17,7 @@ const RecoverScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  const API_BASE = "http://localhost:3000";
+  const API_BASE = "http://localhost:3000/api";
 
   const handleContinue = async () => {
     if (!email.trim()) {
@@ -27,11 +27,11 @@ const RecoverScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log("Recover POST", `${API_BASE}/recover`, {
+      console.log("Recover POST", `${API_BASE}/auth/recover`, {
         email: email.trim(),
       });
 
-      const res = await fetch(`${API_BASE}/recover`, {
+      const res = await fetch(`${API_BASE}/auth/recover`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
