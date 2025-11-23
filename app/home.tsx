@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-const QUICK_BUTTONS = [
+const QUICK_BUTTONS_MORADORES = [
   "Salão de Festas",
   "Reclamações",
   "Assembléias",
@@ -19,6 +19,20 @@ const QUICK_BUTTONS = [
   "Encomendas",
   "Mudanças",
   "Falar com Síndico",
+];
+
+const QUICK_BUTTONS_SINDICO = [
+  "Salão de Festas",
+  "Reclamações",
+  "Assembléias",
+  "Avisos",
+  "Encomendas",
+  "Mudanças",
+  "Portaria",
+  "Moradores",
+  "Altrerar Síndico",
+  "Relatório de custos",
+  "Logs do sistema",
 ];
 
 type User = {
@@ -33,6 +47,8 @@ export default function HomeScreen() {
 
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const [quickButtons, setQuickButtons] = useState(QUICK_BUTTONS_MORADORES);
 
   useEffect(() => {
     let mounted = true;
@@ -69,6 +85,23 @@ export default function HomeScreen() {
     };
   }, [nameFromParams]);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (!raw) return;
+      const user = JSON.parse(raw);
+      const role = (user.role || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+      if (role === "sindico") setQuickButtons(QUICK_BUTTONS_SINDICO);
+      else setQuickButtons(QUICK_BUTTONS_MORADORES);
+    } catch (err) {
+      console.warn("Erro ao ler user do localStorage:", err);
+      setQuickButtons(QUICK_BUTTONS_MORADORES);
+    }
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -88,13 +121,14 @@ export default function HomeScreen() {
       <View style={styles.quickSection}>
         <Text style={styles.sectionTitle}>Acesso Rápido</Text>
         <View style={styles.buttonsGrid}>
-          {QUICK_BUTTONS.map((label) => (
+          {quickButtons.map((label) => (
             <TouchableOpacity
               key={label}
               style={styles.quickButton}
               activeOpacity={0.8}
               onPress={() => {
                 console.log("clicou em", label);
+                router.push("/residents");
               }}
             >
               <Text style={styles.quickButtonText}>{label}</Text>
@@ -155,7 +189,10 @@ export default function HomeScreen() {
             ].map((m, i) => (
               <View key={i} style={styles.moradorCard}>
                 <View style={styles.avatarPlaceholder}>
-                  <Image source={require("../assets/images/user.png")} style={styles.userImg} />
+                  <Image
+                    source={require("../assets/images/user.png")}
+                    style={styles.userImg}
+                  />
                 </View>
                 <Text style={styles.moradorName}>{m.name}</Text>
                 <Text style={styles.moradorDoc}>{m.doc}</Text>
@@ -333,6 +370,6 @@ const styles = StyleSheet.create({
   },
   userImg: {
     width: "100%",
-    height: "100%"
-  }
+    height: "100%",
+  },
 });
