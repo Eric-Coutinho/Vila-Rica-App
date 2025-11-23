@@ -39,6 +39,17 @@ export default function Register() {
     if (selected) setBirthDate(selected);
   }
 
+  function onChangeDateWeb(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    if (!val) {
+      setBirthDate(null);
+      return;
+    }
+    const [year, month, day] = val.split("-").map((p) => Number(p));
+    const d = new Date(year, month - 1, day);
+    setBirthDate(d);
+  }
+
   function formatDate(d: Date | null) {
     if (!d) return "";
     const dd = String(d.getDate()).padStart(2, "0");
@@ -56,45 +67,45 @@ export default function Register() {
     if (!tipoAcesso) return alert("Erro - Selecione o tipo de acesso.");
 
     const payload = {
-        email,
-        password: "SenhaBase",
-        name: nome,
-        bloco,
-        apartamento,
-        relacao,
-        cpf,
-        telefone,
-        birthDate: formatDate(birthDate),
-        tipoAcesso,
-      };
-  
-      try {
-        const res = await fetch(`${API_BASE}/auth/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-  
-        const data = await res.json().catch(() => ({}));
-  
-        if (res.status === 201) {
-          if (data.user) {
-            await AsyncStorage.setItem("user", JSON.stringify(data.user));
-          }
-          alert("Sucesso - Morador cadastrado.");
-          router.back();
-          return;
+      email,
+      password: "SenhaBase",
+      name: nome,
+      bloco,
+      apartamento,
+      relacao,
+      cpf,
+      telefone,
+      birthDate: formatDate(birthDate),
+      tipoAcesso,
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 201) {
+        if (data.user) {
+          await AsyncStorage.setItem("user", JSON.stringify(data.user));
         }
-  
-        if (res.status === 409) {
-          return alert(`Erro - ${data.message}. Email já cadastrado.`);
-        }
-  
-        alert(`Erro - ${data.message}. Falha ao cadastrar. Tente novamente.`);
-      } catch (err) {
-        console.error("Falha no fetch register:", err);
-        alert("Erro - Não foi possível conectar ao servidor.");
+        alert("Sucesso - Morador cadastrado. Um email com o código para alterar a senha foi enviado para a sua caixa de email.");
+        router.back();
+        return;
       }
+
+      if (res.status === 409) {
+        return alert(`Erro - ${data.message}. Email já cadastrado.`);
+      }
+
+      alert(`Erro - ${data.message}. Falha ao cadastrar. Tente novamente.`);
+    } catch (err) {
+      console.error("Falha no fetch register:", err);
+      alert("Erro - Não foi possível conectar ao servidor.");
+    }
   }
 
   return (
@@ -124,10 +135,9 @@ export default function Register() {
             onValueChange={(v) => setBloco(String(v))}
             mode="dropdown"
             style={[
-                styles.selectElement,
-                { color: bloco ? "#000" : "#9b9b9b" }
-              ]}
-              
+              styles.selectElement,
+              { color: bloco ? "#000" : "#9b9b9b" },
+            ]}
           >
             <Picker.Item label="Bloco" value={null} />
             {blocos.map((b) => (
@@ -145,10 +155,9 @@ export default function Register() {
             onValueChange={(v) => setApartamento(String(v))}
             mode="dropdown"
             style={[
-                styles.selectElement,
-                { color: apartamento ? "#000" : "#9b9b9b" }
-              ]}
-              
+              styles.selectElement,
+              { color: apartamento ? "#000" : "#9b9b9b" },
+            ]}
           >
             <Picker.Item label="Apartamento" value={null} />
             {aptos.map((a) => (
@@ -166,9 +175,9 @@ export default function Register() {
             onValueChange={(v) => setRelacao(String(v))}
             mode="dropdown"
             style={[
-                styles.selectElement,
-                { color: relacao ? "#000" : "#9b9b9b" }
-              ]}
+              styles.selectElement,
+              { color: relacao ? "#000" : "#9b9b9b" },
+            ]}
           >
             <Picker.Item label="Relação" value={null} />
             {relacoes.map((r) => (
@@ -210,24 +219,45 @@ export default function Register() {
         <Text style={styles.label}>
           Data de nascimento <Text style={{ color: "#cc0000" }}>*</Text>
         </Text>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.dateInput}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={{ color: birthDate ? "#000" : "#777" }}>
-            {birthDate ? formatDate(birthDate) : "Data de nascimento..."}
-          </Text>
-        </TouchableOpacity>
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={birthDate ?? new Date(2000, 0, 1)}
-            mode="date"
-            display="default"
-            maximumDate={new Date()}
-            onChange={onChangeDate}
+        {Platform.OS === "web" ? (
+          <input
+            type="date"
+            value={birthDate ? birthDate.toISOString().slice(0, 10) : ""}
+            onChange={onChangeDateWeb}
+            style={{
+              boxSizing: "border-box",
+              width: "100%",
+              padding: 12,
+              borderWidth: 1,
+              borderStyle: "solid",
+              borderColor: "#747474",
+              borderRadius: 4,
+              backgroundColor: "#fff",
+              fontSize: 16,
+            }}
           />
+        ) : (
+          <>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.dateInput}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ color: birthDate ? "#000" : "#777" }}>
+                {birthDate ? formatDate(birthDate) : "Data de nascimento..."}
+              </Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={birthDate ?? new Date(2000, 0, 1)}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={onChangeDate}
+              />
+            )}
+          </>
         )}
 
         <Text style={styles.label}>
@@ -239,9 +269,9 @@ export default function Register() {
             onValueChange={(v) => setTipoAcesso(String(v))}
             mode="dropdown"
             style={[
-                styles.selectElement,
-                { color: tipoAcesso ? "#000" : "#9b9b9b" }
-              ]}
+              styles.selectElement,
+              { color: tipoAcesso ? "#000" : "#9b9b9b" },
+            ]}
           >
             <Picker.Item label="Acesso" value={null} />
             {tiposAcesso.map((t) => (
@@ -385,6 +415,6 @@ const styles = StyleSheet.create({
   selectElement: {
     padding: 8,
     fontSize: 16,
-    color: "#9b9b9b"
+    color: "#9b9b9b",
   },
 });
