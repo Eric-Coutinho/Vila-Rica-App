@@ -21,6 +21,8 @@ export default function RootLayout() {
         <Stack.Screen name="redefine" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
         <Stack.Screen name="residents" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
         <Stack.Screen name="register" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
+        <Stack.Screen name="notices" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
+        <Stack.Screen name="create-notice" options={{ title: "Vila Rica Residencial", headerTitleStyle: { fontFamily: "Inter", fontSize: 24, color: "white", fontWeight: 800} }} />
       </Stack>
     );
 }

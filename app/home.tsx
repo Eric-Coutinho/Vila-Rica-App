@@ -11,29 +11,30 @@ import {
   View,
 } from "react-native";
 
-const QUICK_BUTTONS_MORADORES = [
-  "Salão de Festas",
-  "Reclamações",
-  "Assembléias",
-  "Avisos",
-  "Encomendas",
-  "Mudanças",
-  "Falar com Síndico",
-];
+const QUICK_BUTTONS_MORADORES: Record<string,string> = {
+  "/saloon": "Salão de Festas",
+  "/complaints": "Reclamações",
+  "/meetings": "Assembléias",
+  "/notices": "Avisos",
+  "/deliveries": "Encomendas",
+  "/moving": "Mudanças",
+  "/falar-sindico": "Falar com Síndico",
+};
 
-const QUICK_BUTTONS_SINDICO = [
-  "Salão de Festas",
-  "Reclamações",
-  "Assembléias",
-  "Avisos",
-  "Encomendas",
-  "Mudanças",
-  "Portaria",
-  "Moradores",
-  "Altrerar Síndico",
-  "Relatório de custos",
-  "Logs do sistema",
-];
+const QUICK_BUTTONS_SINDICO: Record<string,string> = {
+  "/saloon": "Salão de Festas",
+  "/complaints": "Reclamações",
+  "/meetings": "Assembléias",
+  "/notices": "Avisos",
+  "/deliveries": "Encomendas",
+  "/moving": "Mudanças",
+  "/entrance": "Portaria",
+  "/residents": "Moradores",
+  "/change-manager": "Alterar Síndico",
+  "/costs-report": "Relatório de custos",
+  "/logs": "Logs do sistema",
+};
+
 
 type User = {
   name?: string;
@@ -48,7 +49,7 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const [quickButtons, setQuickButtons] = useState(QUICK_BUTTONS_MORADORES);
+  const [quickButtons, setQuickButtons] = useState<Record<string, string>>(QUICK_BUTTONS_MORADORES);
 
   useEffect(() => {
     let mounted = true;
@@ -86,20 +87,54 @@ export default function HomeScreen() {
   }, [nameFromParams]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("user");
-      if (!raw) return;
-      const user = JSON.parse(raw);
-      const role = (user.role || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
-      if (role === "sindico") setQuickButtons(QUICK_BUTTONS_SINDICO);
-      else setQuickButtons(QUICK_BUTTONS_MORADORES);
-    } catch (err) {
-      console.warn("Erro ao ler user do localStorage:", err);
-      setQuickButtons(QUICK_BUTTONS_MORADORES);
+    let mounted = true;
+  
+    async function loadUserRole() {
+      try {
+        let raw: string | null = null;
+        try {
+          raw = await AsyncStorage.getItem("user");
+        } catch (e) {
+          console.log(`Erro - ${e}`)
+        }
+  
+        if (!raw && typeof localStorage !== "undefined") {
+          try {
+            raw = localStorage.getItem("user");
+          } catch (e) {
+            console.log(`Erro - ${e}`)
+          }
+        }
+  
+        if (!raw) {
+          if (mounted) setQuickButtons(QUICK_BUTTONS_MORADORES);
+          return;
+        }
+  
+        const user = JSON.parse(raw);
+        const role = String(user?.role || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+  
+        if (!mounted) return;
+  
+        if (role === "sindico") {
+          setQuickButtons(QUICK_BUTTONS_SINDICO);
+        } else {
+          setQuickButtons(QUICK_BUTTONS_MORADORES);
+        }
+      } catch (err) {
+        console.warn("Erro ao ler user do storage:", err);
+        if (mounted) setQuickButtons(QUICK_BUTTONS_MORADORES);
+      }
     }
+  
+    loadUserRole();
+  
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   if (loading) {
@@ -121,14 +156,14 @@ export default function HomeScreen() {
       <View style={styles.quickSection}>
         <Text style={styles.sectionTitle}>Acesso Rápido</Text>
         <View style={styles.buttonsGrid}>
-          {quickButtons.map((label) => (
+          {Object.entries(quickButtons).map(([route, label]) => (
             <TouchableOpacity
-              key={label}
+              key={route}
               style={styles.quickButton}
               activeOpacity={0.8}
               onPress={() => {
-                console.log("clicou em", label);
-                router.push("/residents");
+                console.log("clicou em", label, "-> rota:", route);
+                router.push(route as any);
               }}
             >
               <Text style={styles.quickButtonText}>{label}</Text>
