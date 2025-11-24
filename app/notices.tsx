@@ -1,16 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
 
 const API_BASE = "http://localhost:3000/api";
 
@@ -262,8 +262,7 @@ export default function NoticesScreen() {
             <TouchableOpacity
               style={styles.cardButton}
               onPress={() => {
-                console.log("Ver aviso", a.id);
-                // router.push(`/aviso/${a.id}`);
+                router.push({ pathname: "/notices/[id]", params: { id: a.id } });
               }}
             >
               <Text style={styles.cardButtonText}>Ver Aviso</Text>
