@@ -12,11 +12,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
+const API_BASE = "http://localhost:3000/api";
+
 type Aviso = {
   id: string;
   title: string;
-  start?: string;
-  end?: string;
+  startDate?: string;
+  endDate?: string;
   date?: string;
   reference: string;
   status: "active" | "closed";
@@ -31,37 +33,14 @@ export default function NoticesScreen() {
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
-  const [avisos] = useState<Aviso[]>([
-    {
-      id: "1",
-      title: "Corte da energia elétrica",
-      start: "07/10/2024",
-      end: "08/10/2024",
-      reference: "Todos",
-      status: "active",
-    },
-    {
-      id: "2",
-      title: "Dedetização caixa da água",
-      date: "07/10/2024",
-      reference: "Bloco 07",
-      status: "closed",
-    },
-    {
-      id: "3",
-      title: "Problemas com infiltrações",
-      date: "07/10/2024",
-      reference: "Apartamento 23",
-      status: "closed",
-    },
-  ]);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
 
   useEffect(() => {
     let mounted = true;
     async function loadUserRole() {
       try {
         const raw = await AsyncStorage.getItem("user");
-        let userObj = null;
+        let userObj: any = null;
         if (raw) {
           userObj = JSON.parse(raw);
         } else if (typeof localStorage !== "undefined") {
@@ -83,12 +62,88 @@ export default function NoticesScreen() {
       } catch (err) {
         console.warn("Erro ao ler user do storage:", err);
         if (mounted) setIsSindico(false);
+      }
+    }
+
+    loadUserRole();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchNotices() {
+      setLoading(true);
+      try {
+        const raw = (await AsyncStorage.getItem("user")) || (typeof localStorage !== "undefined" ? localStorage.getItem("user") : null);
+        const parsed = raw ? JSON.parse(raw) : null;
+        const userId = parsed?._id || parsed?.id;
+
+        const headers: any = { "Content-Type": "application/json" };
+        if (userId) headers["x-user-id"] = String(userId);
+
+        const res = await fetch(`${API_BASE}/notices`, {
+          method: "GET",
+          headers,
+        });
+
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          console.warn("Falha ao buscar avisos:", res.status, errBody);
+          if (!mounted) return;
+          setAvisos([]);
+          return;
+        }
+
+        const body = await res.json().catch(() => ({}));
+        const noticesArray: any[] = Array.isArray(body) ? body : (body.notices || body.data || []);
+        const mapped: Aviso[] = (noticesArray || []).map((n: any) => {
+          const toDisplay = (iso: any) => {
+            if (!iso) return undefined;
+            const d = new Date(iso);
+            if (isNaN(d.valueOf())) return undefined;
+            const dd = String(d.getDate()).padStart(2, "0");
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+          };
+
+          let reference = "—";
+          if (Array.isArray(n.referente) && n.referente.length > 0) {
+            const r = n.referente[0];
+            const kind = (r.kind || r.type || "").toString();
+            const refId = r.refId ?? r.value ?? "";
+            if (String(kind).toLowerCase().includes("todo")) reference = "Todos";
+            else if (String(kind).toLowerCase().includes("bloco")) reference = `Bloco ${refId || ""}`.trim();
+            else if (String(kind).toLowerCase().includes("apart")) reference = `Apartamento ${refId || ""}`.trim();
+            else if (String(kind).toLowerCase().includes("morad")) reference = `Morador ${refId || ""}`.trim();
+            else reference = kind;
+          }
+
+          return {
+            id: String(n._id || n.id || ""),
+            title: n.title || n.name || "Sem título",
+            startDate: toDisplay(n.startDate || n.createdAt || n.date),
+            endDate: toDisplay(n.endDate),
+            date: toDisplay(n.startDate || n.createdAt || n.date),
+            reference,
+            status: (n.status === "closed" ? "closed" : "active") as "active" | "closed",
+          } as Aviso;
+        });
+
+        if (!mounted) return;
+        setAvisos(mapped);
+      } catch (err) {
+        console.error("Erro ao buscar avisos:", err);
+        if (!mounted) return;
+        setAvisos([]);
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    loadUserRole();
+    fetchNotices();
     return () => {
       mounted = false;
     };
@@ -109,8 +164,8 @@ export default function NoticesScreen() {
     const byDate =
       filterDate.trim() === "" ||
       (a.date && a.date.includes(filterDate)) ||
-      (a.start && a.start.includes(filterDate)) ||
-      (a.end && a.end.includes(filterDate));
+      (a.startDate && a.startDate.includes(filterDate)) ||
+      (a.endDate && a.endDate.includes(filterDate));
     const byStatus =
       !filterStatus || filterStatus === "all"
         ? true
@@ -199,7 +254,7 @@ export default function NoticesScreen() {
             </View>
 
             <Text style={styles.avisoDate}>
-              {a.start && a.end ? `${a.start} - ${a.end}` : a.date ?? ""}
+              {a.startDate && a.endDate ? `${a.startDate} - ${a.endDate}` : a.date ?? ""}
             </Text>
 
             <Text style={styles.avisoRef}>Referente a: {a.reference}</Text>

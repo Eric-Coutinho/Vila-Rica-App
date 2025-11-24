@@ -1,3 +1,7 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -9,10 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
 
 const API_BASE = "http://localhost:3000/api";
 
@@ -85,6 +85,11 @@ export default function NovoAviso() {
     return `${dd}/${mm}/${yyyy}`;
   }
 
+  function formatDateISO(d: Date | null) {
+    if (!d) return undefined;
+    return d.toISOString();
+  }
+
   useEffect(() => {
     let mounted = true;
     async function loadUser() {
@@ -123,21 +128,43 @@ export default function NovoAviso() {
 
   useEffect(() => {
     let mounted = true;
+    const userStr = localStorage.getItem("user") || "";
+
     async function fetchResidents() {
       if (fetchedResidents || refType !== "Morador") return;
       setLoadingResidents(true);
       try {
-        const res = await fetch(`${API_BASE}/user/getAll`);
+        const parsed = userStr ? JSON.parse(userStr) : null;
+        const userId = parsed?._id || parsed?.id;
+
+        if (!userId) {
+          console.warn("Nenhum userId encontrado no localStorage");
+          setLoadingResidents(false);
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/auth/list-users`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': String(userId)
+          }
+        });
         if (!res.ok) throw new Error("Falha ao buscar moradores");
-        const arr = await res.json();
+        const body = await res.json();
+        console.log(body);
+
         if (!mounted) return;
-        const mapped: Resident[] = (arr || []).map((u: any) => ({
+        const usersArray: any[] = Array.isArray(body) ? body : (body.users || []);
+
+        const mapped: Resident[] = usersArray.map((u: any) => ({
           _id: u._id,
           name: u.name,
           bloco: u.bloco,
           apartamento: u.apartamento,
-          ...u,
+          ...u
         }));
+
         setResidents(mapped);
         setFetchedResidents(true);
       } catch (err) {
@@ -227,24 +254,56 @@ export default function NovoAviso() {
       return alert("Acesso negado - Apenas Síndico pode criar avisos.");
     }
 
+    const referentePayload = referentes.map((r) => {
+      if (r.type === "Todos")
+        return { kind: "Todos" };
+
+      if (r.type === "Bloco")
+        return { kind: "Bloco", refId: String(r.value) };
+
+      if (r.type === "Apartamento")
+        return { kind: "Apartamento", refId: String(r.value) };
+
+      if (r.type === "Morador")
+        return { kind: "Morador", refId: String(r.value) };
+
+      return { kind: "Todos" };
+    });
+
+
     const payload = {
       title: title.trim(),
       description: description.trim(),
-      startDate: formatDate(startDate),
-      endDate: endDate ? formatDate(endDate) : undefined,
-      referentes: referentes.map((r) => ({ type: r.type, value: r.value })),
+      status: "active",
+      startDate: formatDateISO(startDate),
+      endDate: endDate ? formatDateISO(endDate) : undefined,
+      referente: referentePayload,
       createdAt: new Date().toISOString(),
     };
 
+    console.log("Payload: " + JSON.stringify(payload))
+
     try {
+      const userStr = localStorage.getItem("user") || "";
+      const parsed = userStr ? JSON.parse(userStr) : null;
+      const userId = parsed?._id || parsed?.id;
+
+      if (!userId) {
+        console.warn("Nenhum userId encontrado no localStorage");
+        setLoadingResidents(false);
+        return;
+      }
       const res = await fetch(`${API_BASE}/notices`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'x-user-id': String(userId)
+        },
         body: JSON.stringify(payload),
       });
       if (res.status === 201 || res.ok) {
         alert("Sucesso - Aviso criado.");
-        router.back();
+        router.push("/notices");
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -267,14 +326,14 @@ export default function NovoAviso() {
     const text =
       referentes.length > 0
         ? `Referentes\n${referentes
-            .map((r) => `${r.type}: ${r.value}`)
-            .join("\n")}`
+          .map((r) => `${r.type}: ${r.value}`)
+          .join("\n")}`
         : "Referentes\nNenhum referente adicionado.";
 
     if (Platform.OS === "web") {
       alert(text);
     } else {
-      Alert.alert("Referentes", text);
+      alert(`Referentes - ${text}`);
     }
   }
 
@@ -465,14 +524,13 @@ export default function NovoAviso() {
                             value={null}
                           />
                           {residents.map((u) => {
-                            const label = `${u.name} (${u.bloco ?? "–"}/${
-                              u.apartamento ?? "–"
-                            })`;
+                            const label = `${u.name} (${u.bloco ?? "–"}/${u.apartamento ?? "–"
+                              })`;
                             return (
                               <Picker.Item
                                 key={u._id}
                                 label={label}
-                                value={label}
+                                value={u._id}
                               />
                             );
                           })}
@@ -515,7 +573,7 @@ export default function NovoAviso() {
         <TouchableOpacity
           style={styles.cancelBtn}
           onPress={() => {
-            router.back();
+            router.push("/notices");
           }}
         >
           <Text style={styles.cancelBtnText}>Cancelar</Text>

@@ -89,10 +89,10 @@ export default function Register() {
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 201) {
-        if (data.user) {
-          await AsyncStorage.setItem("user", JSON.stringify(data.user));
-        }
-        alert("Sucesso - Morador cadastrado. Um email com o código para alterar a senha foi enviado para a sua caixa de email.");
+        // if (data.user) {
+        //   await AsyncStorage.setItem("user", JSON.stringify(data.user));
+        // }
+        alert("Sucesso - Morador cadastrado.");
         router.back();
         return;
       }
