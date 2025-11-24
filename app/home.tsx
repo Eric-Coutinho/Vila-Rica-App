@@ -21,6 +21,15 @@ const QUICK_BUTTONS_MORADORES: Record<string,string> = {
   "/falar-sindico": "Falar com Síndico",
 };
 
+const QUICK_BUTTONS_FUNCIONARIOS: Record<string,string> = {
+  "/saloon": "Salão de Festas",
+  "/notices": "Avisos",
+  "/deliveries": "Encomendas",
+  "/moving": "Mudanças",
+  "/falar-sindico": "Falar com Síndico",
+  "/clock-in": "Ponto",
+};
+
 const QUICK_BUTTONS_SINDICO: Record<string,string> = {
   "/saloon": "Salão de Festas",
   "/complaints": "Reclamações",
@@ -121,6 +130,8 @@ export default function HomeScreen() {
   
         if (role === "sindico") {
           setQuickButtons(QUICK_BUTTONS_SINDICO);
+        } else if (role === "funcionario") {
+          setQuickButtons(QUICK_BUTTONS_FUNCIONARIOS);
         } else {
           setQuickButtons(QUICK_BUTTONS_MORADORES);
         }
