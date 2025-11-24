@@ -399,7 +399,7 @@ export default function NoticeDetailScreen() {
                   {c.replies.map((r: any) => (
                     <View key={r._id} style={styles.replyCard}>
                       <Text style={{ fontWeight: "700" }}>
-                        {r.author?.name || r.author}
+                        {r.authorName || r.author}
                       </Text>
                       <Text>{r.text}</Text>
                     </View>
