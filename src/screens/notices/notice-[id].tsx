@@ -1,19 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  FlatList,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 
 const API_BASE = "http://localhost:3000/api";
 
@@ -51,7 +48,7 @@ export default function NoticeDetailScreen() {
 
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<"active" | "closed">(
-    "active"
+    "active",
   );
   const [savingStatus, setSavingStatus] = useState(false);
 
@@ -74,7 +71,7 @@ export default function NoticeDetailScreen() {
           .toLowerCase();
         if (mounted)
           setIsSindico(
-            role === "sindico" || role === "síndico" || role === "admin"
+            role === "sindico" || role === "síndico" || role === "admin",
           );
       } catch (err) {
         console.warn("Erro ao ler user:", err);
@@ -238,7 +235,7 @@ export default function NoticeDetailScreen() {
           method: "POST",
           headers,
           body: JSON.stringify({ text }),
-        }
+        },
       );
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
@@ -378,7 +375,7 @@ export default function NoticeDetailScreen() {
               : c.author);
           const timeAgo = c.createdAt
             ? `${Math.round(
-                (Date.now() - new Date(c.createdAt).getTime()) / 3600000
+                (Date.now() - new Date(c.createdAt).getTime()) / 3600000,
               )}h atrás`
             : "";
           return (
