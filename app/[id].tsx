@@ -1,1 +1,0 @@
-export { default } from "../src/screens/notices/notice-[id]";

@@ -18,7 +18,7 @@ export default function ResidentsScreen() {
   const [filtroApto, setFiltroApto] = useState("Apartamento");
   const [filtroNome, setFiltroNome] = useState("");
 
-  const moradoresMock = [
+  const moradores = [
     {
       id: "1",
       name: "Morador 1",
@@ -48,7 +48,7 @@ export default function ResidentsScreen() {
     },
   ];
 
-  const filtered = moradoresMock.filter((m) => {
+  const filtered = moradores.filter((m) => {
     const byName =
       filtroNome.trim() === "" ||
       m.name.toLowerCase().includes(filtroNome.toLowerCase());

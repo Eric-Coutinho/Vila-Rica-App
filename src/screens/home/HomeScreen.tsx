@@ -13,7 +13,7 @@ import {
 import { styles } from "./styles";
 
 const QUICK_BUTTONS_MORADORES: Record<string,string> = {
-  "/saloon": "Salão de Festas",
+  "/party-saloon": "Salão de Festas",
   "/complaints": "Reclamações",
   "/meetings": "Assembléias",
   "/notices": "Avisos",
@@ -23,7 +23,7 @@ const QUICK_BUTTONS_MORADORES: Record<string,string> = {
 };
 
 const QUICK_BUTTONS_FUNCIONARIOS: Record<string,string> = {
-  "/saloon": "Salão de Festas",
+  "/party-saloon": "Salão de Festas",
   "/notices": "Avisos",
   "/deliveries": "Encomendas",
   "/moving": "Mudanças",
@@ -32,7 +32,7 @@ const QUICK_BUTTONS_FUNCIONARIOS: Record<string,string> = {
 };
 
 const QUICK_BUTTONS_SINDICO: Record<string,string> = {
-  "/saloon": "Salão de Festas",
+  "/party-saloon": "Salão de Festas",
   "/complaints": "Reclamações",
   "/meetings": "Assembléias",
   "/notices": "Avisos",
