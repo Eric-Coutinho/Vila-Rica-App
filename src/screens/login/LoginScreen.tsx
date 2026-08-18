@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
 } from "react-native";
 import { styles } from "./styles";
@@ -16,11 +15,21 @@ type ApiUser = {
   email?: string;
   name?: string;
   recoverCode?: string;
+  twoFactorCode?: string;
+  twoFactorCodeExpiresAt?: string;
 };
 
 type ApiResponse =
-  | { ok: true; user: ApiUser }
-  | { ok: false; message?: string };
+  | {
+      ok: true;
+      requiresTwoFactor?: boolean;
+      message?: string;
+      user?: ApiUser;
+    }
+  | {
+      ok: false;
+      message?: string;
+    };
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -35,40 +44,60 @@ const LoginScreen: React.FC = () => {
       alert("Erro - Preencha email e senha");
       return;
     }
-  
+
     try {
       setLoading(true);
-  
+
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password: senha }),
       });
-  
+
       const raw = await res.text();
       console.log("raw:", raw);
-  
+
       let data: ApiResponse | null = null;
+
       try {
         data = raw ? (JSON.parse(raw) as ApiResponse) : null;
       } catch (parseErr) {
         console.warn("Login erro ao parsear JSON:", parseErr);
       }
+
       console.log("Login body parsed:", data);
-  
+
       if (!data) {
         alert(`Erro - Resposta inválida do servidor: ${raw || "vazia"}`);
         return;
       }
-  
+
       if (!data.ok) {
         alert(`Erro - ${data.message ?? "Falha no login"}`);
         return;
       }
-  
-      alert(`Sucesso - Bem-vindo, ${data.user?.name ?? data.user?.email}`);
-      await AsyncStorage.setItem('user', JSON.stringify(data.user));
-      router.push({ pathname: '/home', params: { name: data.user.name } })
+
+      if (data.requiresTwoFactor) {
+        router.replace({
+          pathname: "/2fa",
+          params: { email: email.trim() },
+        });
+        return;
+      }
+
+      if (!data.user) {
+        alert("Erro - O servidor não retornou os dados do usuário.");
+        return;
+      }
+
+      await AsyncStorage.setItem("user", JSON.stringify(data.user));
+
+      alert(`Sucesso - Bem-vindo, ${data.user.name ?? data.user.email}`);
+
+      router.replace({
+        pathname: "/home",
+        params: { name: data.user.name ?? "" },
+      });
     } catch (err: any) {
       console.error("Login fetch error:", err);
       alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
@@ -76,7 +105,6 @@ const LoginScreen: React.FC = () => {
       setLoading(false);
     }
   };
-  
 
   const handleCancel = () => {
     setEmail("");
@@ -150,4 +178,3 @@ const LoginScreen: React.FC = () => {
 };
 
 export default LoginScreen;
-
