@@ -71,4 +71,27 @@ export const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "500",
   },
+  loadingOverlay: {
+  flex: 1,
+  backgroundColor: "rgba(0, 0, 0, 0.45)",
+  justifyContent: "center",
+  alignItems: "center",
+},
+
+loadingBox: {
+  width: 220,
+  paddingVertical: 25,
+  paddingHorizontal: 20,
+  borderRadius: 12,
+  backgroundColor: "#fff",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+loadingText: {
+  marginTop: 15,
+  fontSize: 18,
+  fontWeight: "500",
+  textAlign: "center",
+}
 });

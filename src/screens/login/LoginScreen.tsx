@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Modal
 } from "react-native";
 import { styles } from "./styles";
 
@@ -173,6 +174,20 @@ const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+      <Modal
+  transparent
+  visible={loading}
+  animationType="fade"
+>
+    <View style={styles.loadingOverlay}>
+      <View style={styles.loadingBox}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>
+          Verificando login...
+        </Text>
+      </View>
+    </View>
+  </Modal>
     </View>
   );
 };

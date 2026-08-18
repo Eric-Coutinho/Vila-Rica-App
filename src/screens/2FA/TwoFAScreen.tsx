@@ -124,6 +124,8 @@ const TwoFAScreen: React.FC = () => {
         await AsyncStorage.setItem("user", JSON.stringify(data.user));
       }
 
+    alert(`Sucesso - Bem-vindo, ${ data.user?.name ?? data.user?.email ?? "" }`);
+
       router.replace({
         pathname: "/home",
         params: { name: data.user?.name ?? "" },
