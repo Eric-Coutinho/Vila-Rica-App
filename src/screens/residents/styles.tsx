@@ -100,4 +100,89 @@ export const styles = StyleSheet.create({
     padding: 18,
     alignItems: "center",
   },
+  deleteButton: {
+    width: "100%",
+    backgroundColor: "#b85a56",
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+
+  deleteButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+
+  modalBox: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 24,
+  },
+
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+
+  modalText: {
+    fontSize: 18,
+    lineHeight: 26,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#777",
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cancelButtonText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+
+  confirmDeleteButton: {
+    flex: 1,
+    backgroundColor: "#b85a56",
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  confirmDeleteButtonText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "600",
+  },
 });

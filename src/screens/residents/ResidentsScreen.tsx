@@ -1,61 +1,235 @@
-import React, { useState } from "react";
-import {
-  ScrollView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-} from "react-native";
 import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { styles } from "./styles";
 
+type Morador = {
+  _id: string;
+  name?: string;
+  bloco?: string;
+  apartamento?: string;
+  cpf?: string;
+  telefone?: string;
+  birthDate?: string;
+  role?: string;
+};
+
+type UsersResponse = {
+  ok: boolean;
+  users?: Morador[];
+  message?: string;
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+};
+
+const API_BASE = "http://localhost:3000/api";
+
 export default function ResidentsScreen() {
   const router = useRouter();
+
+  const [moradores, setMoradores] = useState<Morador[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [filtroBloco, setFiltroBloco] = useState("Bloco");
   const [filtroApto, setFiltroApto] = useState("Apartamento");
   const [filtroNome, setFiltroNome] = useState("");
 
-  const moradores = [
-    {
-      id: "1",
-      name: "Morador 1",
-      bloco: "Bloco 7",
-      apartamento: "Apartamento 23",
-      cpf: "123.456.789-00",
-      phone: "41 91234-5678",
-      birthdate: "01/01/2000",
-    },
-    {
-      id: "2",
-      name: "Morador 2",
-      bloco: "Bloco 7",
-      apartamento: "Apartamento 24",
-      cpf: "234.567.890-11",
-      phone: "41 97654-3210",
-      birthdate: "03/03/1992",
-    },
-    {
-      id: "3",
-      name: "Morador 3",
-      bloco: "Bloco 7",
-      apartamento: "Apartamento 25",
-      cpf: "345.678.901-22",
-      phone: "41 99876-5432",
-      birthdate: "12/12/2010",
-    },
-  ];
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [moradorToDelete, setMoradorToDelete] = useState<Morador | null>(null);
+
+  const handleDelete = (morador: Morador) => {
+    setMoradorToDelete(morador);
+    setShowDeleteModal(true);
+  };
+
+  const carregarMoradores = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const storedUser = await AsyncStorage.getItem("user");
+
+      if (!storedUser) {
+        throw new Error("Usuário não encontrado no armazenamento local.");
+      }
+
+      const loggedUser = JSON.parse(storedUser);
+
+      if (!loggedUser?._id) {
+        throw new Error("ID do usuário logado não encontrado.");
+      }
+
+      const response = await fetch(`${API_BASE}/auth/list-users`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": loggedUser._id,
+        },
+      });
+
+      const data: UsersResponse = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          data.message || "Não foi possível carregar os moradores.",
+        );
+      }
+
+      setMoradores(data.users ?? []);
+    } catch (error: any) {
+      console.error("Erro ao carregar moradores:", error);
+
+      Alert.alert(
+        "Erro",
+        error?.message || "Não foi possível carregar a lista de moradores.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarMoradores();
+  }, [carregarMoradores]);
+
+  const blocos = useMemo(() => {
+    const values = moradores
+      .map((morador) => morador.bloco?.trim())
+      .filter((bloco): bloco is string => Boolean(bloco));
+
+    return Array.from(new Set(values)).sort();
+  }, [moradores]);
+
+  const apartamentos = useMemo(() => {
+    const values = moradores
+      .filter(
+        (morador) => filtroBloco === "Bloco" || morador.bloco === filtroBloco,
+      )
+      .map((morador) => morador.apartamento?.trim())
+      .filter((apartamento): apartamento is string => Boolean(apartamento));
+
+    return Array.from(new Set(values)).sort();
+  }, [moradores, filtroBloco]);
 
   const filtered = moradores.filter((m) => {
+    const nome = m.name ?? "";
+    const bloco = m.bloco ?? "";
+    const apartamento = m.apartamento ?? "";
+
     const byName =
       filtroNome.trim() === "" ||
-      m.name.toLowerCase().includes(filtroNome.toLowerCase());
-    const byBloco = filtroBloco === "Bloco" || m.bloco === filtroBloco;
-    const byApto = filtroApto === "Apartamento" || m.apartamento === filtroApto;
+      nome.toLowerCase().includes(filtroNome.toLowerCase());
+
+    const byBloco = filtroBloco === "Bloco" || bloco === filtroBloco;
+
+    const byApto = filtroApto === "Apartamento" || apartamento === filtroApto;
+
     return byName && byBloco && byApto;
   });
+
+  const formatDate = (value?: string) => {
+    if (!value) return "-";
+
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+      const [year, month, day] = value.substring(0, 10).split("-");
+      return `${day}/${month}/${year}`;
+    }
+
+    return value;
+  };
+
+  const excluirMorador = async (morador: Morador) => {
+    if (!morador._id) {
+      Alert.alert("Erro", "ID do morador não encontrado.");
+      return;
+    }
+
+    try {
+      setDeletingId(morador._id);
+
+      const response = await fetch(
+        `${API_BASE}/auth/users/delete/${morador._id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.message || "Não foi possível excluir o morador.");
+      }
+
+      // Remove imediatamente da lista local
+      setMoradores((current) =>
+        current.filter((item) => item._id !== morador._id),
+      );
+
+      Alert.alert(
+        "Sucesso",
+        `${morador.name ?? "Morador"} foi excluído com sucesso.`,
+      );
+    } catch (error: any) {
+      console.error("Erro ao excluir morador:", error);
+
+      Alert.alert(
+        "Erro",
+        error?.message || "Não foi possível excluir o morador.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const toggleBloco = () => {
+    if (blocos.length === 0) {
+      setFiltroBloco("Bloco");
+      return;
+    }
+
+    const currentIndex = blocos.indexOf(filtroBloco);
+
+    if (currentIndex === -1 || currentIndex >= blocos.length - 1) {
+      setFiltroBloco("Bloco");
+    } else {
+      setFiltroBloco(blocos[currentIndex + 1]);
+    }
+
+    // Sempre que mudar o bloco, volta o apartamento para todos
+    setFiltroApto("Apartamento");
+  };
+
+  const toggleApartamento = () => {
+    if (apartamentos.length === 0) {
+      setFiltroApto("Apartamento");
+      return;
+    }
+
+    const currentIndex = apartamentos.indexOf(filtroApto);
+
+    if (currentIndex === -1 || currentIndex >= apartamentos.length - 1) {
+      setFiltroApto("Apartamento");
+    } else {
+      setFiltroApto(apartamentos[currentIndex + 1]);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
@@ -66,7 +240,6 @@ export default function ResidentsScreen() {
       <TouchableOpacity
         style={styles.registerButton}
         onPress={() => {
-          console.log("Cadastrar Morador");
           router.push("/register");
         }}
         activeOpacity={0.85}
@@ -77,12 +250,10 @@ export default function ResidentsScreen() {
       <View style={styles.filtersRow}>
         <View style={styles.selectBox}>
           <Text style={styles.selectLabel}>Bloco</Text>
+
           <TouchableOpacity
             style={styles.selectTouchable}
-            onPress={() => {
-              // exemplo simples: alterna valor para demo
-              setFiltroBloco((prev) => (prev === "Bloco" ? "Bloco 7" : "Bloco"));
-            }}
+            onPress={toggleBloco}
           >
             <Text style={styles.selectText}>{filtroBloco}</Text>
           </TouchableOpacity>
@@ -90,13 +261,10 @@ export default function ResidentsScreen() {
 
         <View style={styles.selectBox}>
           <Text style={styles.selectLabel}>Apartamento</Text>
+
           <TouchableOpacity
             style={styles.selectTouchable}
-            onPress={() => {
-              setFiltroApto((prev) =>
-                prev === "Apartamento" ? "Apartamento 23" : "Apartamento"
-              );
-            }}
+            onPress={toggleApartamento}
           >
             <Text style={styles.selectText}>{filtroApto}</Text>
           </TouchableOpacity>
@@ -105,6 +273,7 @@ export default function ResidentsScreen() {
 
       <View style={{ marginTop: 8 }}>
         <Text style={styles.selectLabel}>Nome</Text>
+
         <TextInput
           placeholder="Nome..."
           value={filtroNome}
@@ -114,36 +283,61 @@ export default function ResidentsScreen() {
       </View>
 
       <View style={{ marginTop: 14 }}>
-        {filtered.map((m) => (
-          <View key={m.id} style={styles.moradorCard}>
-            <Text style={styles.cardTitle}>{m.name}</Text>
-
-            <Text style={styles.cardSmall}>
-              {m.bloco} {m.apartamento}
-            </Text>
-
-            <Text style={styles.cardSmall}>CPF: {m.cpf}</Text>
-            <Text style={styles.cardSmall}>Telefone: {m.phone}</Text>
-            <Text style={styles.cardSmall}>
-              Data de Nascimento: {m.birthdate}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.cardButton}
-              onPress={() => {
-                console.log("Ver informações de", m.name);
-                // router.push(`/morador/${m.id}`);
-              }}
-            >
-              <Text style={styles.cardButtonText}>Ver Informações</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-
-        {filtered.length === 0 && (
+        {loading ? (
           <View style={styles.emptyBox}>
-            <Text>Nenhum morador encontrado.</Text>
+            <ActivityIndicator size="large" />
+            <Text style={{ marginTop: 12 }}>Carregando moradores...</Text>
           </View>
+        ) : (
+          <>
+            {filtered.map((m) => (
+              <View key={m._id} style={styles.moradorCard}>
+                <Text style={styles.cardTitle}>
+                  {m.name ?? "Nome não informado"}
+                </Text>
+
+                <Text style={styles.cardSmall}>
+                  {m.bloco ?? "Bloco não informado"}{" "}
+                  {m.apartamento ?? "Apartamento não informado"}
+                </Text>
+
+                <Text style={styles.cardSmall}>CPF: {m.cpf ?? "-"}</Text>
+
+                <Text style={styles.cardSmall}>
+                  Data de Nascimento: {formatDate(m.birthDate)}
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.cardButton}
+                  onPress={() => {
+                    console.log("Ver informações de", m.name);
+                    // router.push(`/morador/${m._id}`);
+                  }}
+                >
+                  <Text style={styles.cardButtonText}>Ver Informações</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDelete(m)}
+                  activeOpacity={0.85}
+                  disabled={deletingId === m._id}
+                >
+                  {deletingId === m._id ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.deleteButtonText}>Excluir Morador</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {filtered.length === 0 && (
+              <View style={styles.emptyBox}>
+                <Text>Nenhum morador encontrado.</Text>
+              </View>
+            )}
+          </>
         )}
       </View>
     </ScrollView>
