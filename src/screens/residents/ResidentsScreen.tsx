@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -93,9 +94,8 @@ export default function ResidentsScreen() {
     } catch (error: any) {
       console.error("Erro ao carregar moradores:", error);
 
-      Alert.alert(
-        "Erro",
-        error?.message || "Não foi possível carregar a lista de moradores.",
+      alert(
+        `Erro: ${error?.message || "Não foi possível carregar a lista de moradores."}`,
       );
     } finally {
       setLoading(false);
@@ -158,6 +158,18 @@ export default function ResidentsScreen() {
       return;
     }
 
+    const storedUser = await AsyncStorage.getItem("user");
+
+    if (!storedUser) {
+      throw new Error("Usuário não encontrado no armazenamento local.");
+    }
+
+    const loggedUser = JSON.parse(storedUser);
+
+    if (!loggedUser?._id) {
+      throw new Error("ID do usuário logado não encontrado.");
+    }
+
     try {
       setDeletingId(morador._id);
 
@@ -167,6 +179,7 @@ export default function ResidentsScreen() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-user-id": loggedUser._id,
           },
         },
       );
@@ -182,9 +195,7 @@ export default function ResidentsScreen() {
         current.filter((item) => item._id !== morador._id),
       );
 
-      Alert.alert(
-        "Sucesso",
-        `${morador.name ?? "Morador"} foi excluído com sucesso.`,
+      alert(`Sucesso, ${morador.name ?? "Morador"} foi excluído com sucesso.`,
       );
     } catch (error: any) {
       console.error("Erro ao excluir morador:", error);
@@ -340,6 +351,64 @@ export default function ResidentsScreen() {
           </>
         )}
       </View>
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowDeleteModal(false);
+          setMoradorToDelete(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Excluir morador</Text>
+
+            <Text style={styles.modalText}>
+              Tem certeza que deseja excluir{" "}
+              <Text style={{ fontWeight: "700" }}>
+                {moradorToDelete?.name ?? "este morador"}
+              </Text>
+              ?
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setMoradorToDelete(null);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmDeleteButton}
+                onPress={async () => {
+                  if (!moradorToDelete) return;
+
+                  const morador = moradorToDelete;
+
+                  setShowDeleteModal(false);
+                  setMoradorToDelete(null);
+
+                  await excluirMorador(morador);
+                }}
+                activeOpacity={0.85}
+                disabled={deletingId !== null}
+              >
+                {deletingId ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.confirmDeleteButtonText}>Excluir</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

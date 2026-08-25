@@ -1,15 +1,15 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
   Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useRouter } from "expo-router";
 
 import { styles } from "./styles";
 
@@ -76,7 +76,7 @@ export default function RegisterScreen() {
       cpf,
       telefone,
       birthDate: formatDate(birthDate),
-      tipoAcesso,
+      role: tipoAcesso
     };
 
     try {
@@ -93,7 +93,7 @@ export default function RegisterScreen() {
         //   await AsyncStorage.setItem("user", JSON.stringify(data.user));
         // }
         alert("Sucesso - Morador cadastrado.");
-        router.back();
+        router.push('/residents');
         return;
       }
 
@@ -206,7 +206,7 @@ export default function RegisterScreen() {
           keyboardType="email-address"
         />
 
-        <Text style={styles.label}>Telefone</Text>
+        {/* <Text style={styles.label}>Telefone</Text>
         <TextInput
           placeholder="41 91234-5678"
           placeholderTextColor="#9b9b9b"
@@ -214,7 +214,7 @@ export default function RegisterScreen() {
           value={telefone}
           onChangeText={setTelefone}
           keyboardType="phone-pad"
-        />
+        /> */}
 
         <Text style={styles.label}>
           Data de nascimento <Text style={{ color: "#cc0000" }}>*</Text>
