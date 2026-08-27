@@ -41,7 +41,7 @@ export const styles = StyleSheet.create({
   selectLabel: {
     fontWeight: "600",
     marginBottom: 6,
-    fontSize: 17
+    fontSize: 17,
   },
   selectTouchable: {
     borderWidth: 1,
@@ -51,6 +51,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 8,
     backgroundColor: "#fff",
   },
+
   selectText: {
     fontSize: 17,
   },
@@ -89,7 +90,7 @@ export const styles = StyleSheet.create({
   cardButton: {
     marginTop: 8,
     backgroundColor: "#466CA5",
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: "center",
   },
@@ -111,7 +112,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10,
+    marginVertical: 10,
   },
 
   deleteButtonText: {
