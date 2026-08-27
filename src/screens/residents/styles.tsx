@@ -26,7 +26,8 @@ export const styles = StyleSheet.create({
   },
   registerButtonText: {
     color: "#fff",
-    fontWeight: "700",
+    fontWeight: "600",
+    fontSize: 17,
   },
 
   filtersRow: {
@@ -40,6 +41,7 @@ export const styles = StyleSheet.create({
   selectLabel: {
     fontWeight: "600",
     marginBottom: 6,
+    fontSize: 17
   },
   selectTouchable: {
     borderWidth: 1,
@@ -50,11 +52,11 @@ export const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   selectText: {
-    fontSize: 14,
+    fontSize: 17,
   },
   nameInput: {
     width: "100%",
-    fontSize: 16,
+    fontSize: 17,
     textAlign: "left",
     backgroundColor: "white",
     borderColor: "#747474",
@@ -73,13 +75,13 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     marginBottom: 8,
     textAlign: "center",
   },
   cardSmall: {
-    fontSize: 13,
+    fontSize: 16,
     marginBottom: 6,
     color: "#333",
   },
@@ -87,13 +89,15 @@ export const styles = StyleSheet.create({
   cardButton: {
     marginTop: 8,
     backgroundColor: "#466CA5",
-    paddingVertical: 10,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
     alignItems: "center",
   },
+
   cardButtonText: {
     color: "#fff",
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
   },
 
   emptyBox: {
@@ -104,7 +108,7 @@ export const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "#b85a56",
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
@@ -112,7 +116,7 @@ export const styles = StyleSheet.create({
 
   deleteButtonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
   },
 
@@ -144,8 +148,8 @@ export const styles = StyleSheet.create({
   },
 
   modalText: {
-    fontSize: 18,
-    lineHeight: 26,
+    fontSize: 16,
+    lineHeight: 24,
     textAlign: "center",
     marginBottom: 24,
   },
@@ -160,14 +164,14 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#777",
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
 
   cancelButtonText: {
     color: "#fff",
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "600",
   },
 
@@ -175,14 +179,14 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#b85a56",
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
 
   confirmDeleteButtonText: {
     color: "#fff",
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "600",
   },
 });
