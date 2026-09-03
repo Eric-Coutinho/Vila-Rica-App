@@ -12,26 +12,26 @@ import {
 
 import { styles } from "./styles";
 
-const QUICK_BUTTONS_MORADORES: Record<string,string> = {
+const QUICK_BUTTONS_MORADORES: Record<string, string> = {
   "/party-saloon": "Salão de Festas",
   "/complaints": "Reclamações",
   "/meetings": "Assembléias",
   "/notices": "Avisos",
   "/deliveries": "Encomendas",
   "/moving": "Mudanças",
-  "/falar-sindico": "Falar com Síndico",
+  "/contact-manager": "Falar com Síndico",
 };
 
-const QUICK_BUTTONS_FUNCIONARIOS: Record<string,string> = {
+const QUICK_BUTTONS_FUNCIONARIOS: Record<string, string> = {
   "/party-saloon": "Salão de Festas",
   "/notices": "Avisos",
   "/deliveries": "Encomendas",
   "/moving": "Mudanças",
-  "/falar-sindico": "Falar com Síndico",
+  "/contact-manager": "Falar com Síndico",
   "/clock-in": "Ponto",
 };
 
-const QUICK_BUTTONS_SINDICO: Record<string,string> = {
+const QUICK_BUTTONS_SINDICO: Record<string, string> = {
   "/party-saloon": "Salão de Festas",
   "/complaints": "Reclamações",
   "/meetings": "Assembléias",
@@ -45,10 +45,10 @@ const QUICK_BUTTONS_SINDICO: Record<string,string> = {
   "/chatbot": "Chatbot",
 };
 
-
 type User = {
   name?: string;
   email?: string;
+  role?: string;
 };
 
 export default function HomeScreen() {
@@ -57,14 +57,17 @@ export default function HomeScreen() {
   const nameFromParams = (params?.name as string) || undefined;
 
   const [userName, setUserName] = useState<string | undefined>(undefined);
+  const [roleTitle, setRoleTitle] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const [quickButtons, setQuickButtons] = useState<Record<string, string>>(QUICK_BUTTONS_MORADORES);
+  const [quickButtons, setQuickButtons] = useState<Record<string, string>>(
+    QUICK_BUTTONS_MORADORES,
+  );
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadName() {
+    async function loadUser() {
       try {
         if (nameFromParams) {
           if (mounted) setUserName(nameFromParams);
@@ -89,7 +92,7 @@ export default function HomeScreen() {
       }
     }
 
-    loadName();
+    loadUser();
 
     return () => {
       mounted = false;
@@ -98,37 +101,37 @@ export default function HomeScreen() {
 
   useEffect(() => {
     let mounted = true;
-  
+
     async function loadUserRole() {
       try {
         let raw: string | null = null;
         try {
           raw = await AsyncStorage.getItem("user");
         } catch (e) {
-          console.log(`Erro - ${e}`)
+          console.log(`Erro - ${e}`);
         }
-  
+
         if (!raw && typeof localStorage !== "undefined") {
           try {
             raw = localStorage.getItem("user");
           } catch (e) {
-            console.log(`Erro - ${e}`)
+            console.log(`Erro - ${e}`);
           }
         }
-  
+
         if (!raw) {
           if (mounted) setQuickButtons(QUICK_BUTTONS_MORADORES);
           return;
         }
-  
+
         const user = JSON.parse(raw);
         const role = String(user?.role || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
           .toLowerCase();
-  
+
         if (!mounted) return;
-  
+
         if (role === "sindico") {
           setQuickButtons(QUICK_BUTTONS_SINDICO);
         } else if (role === "funcionario") {
@@ -136,14 +139,15 @@ export default function HomeScreen() {
         } else {
           setQuickButtons(QUICK_BUTTONS_MORADORES);
         }
+        setRoleTitle(role);
       } catch (err) {
         console.warn("Erro ao ler user do storage:", err);
         if (mounted) setQuickButtons(QUICK_BUTTONS_MORADORES);
       }
     }
-  
+
     loadUserRole();
-  
+
     return () => {
       mounted = false;
     };
@@ -174,7 +178,6 @@ export default function HomeScreen() {
               style={styles.quickButton}
               activeOpacity={0.8}
               onPress={() => {
-                console.log("clicou em", label, "-> rota:", route);
                 router.push(route as any);
               }}
             >
@@ -185,7 +188,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.apartmentSection}>
-        <Text style={styles.sectionTitle}>Seus Apartamentos:</Text>
+        <Text style={styles.sectionTitle}>
+          {roleTitle === "sindico" ? "Buscar Apartamentos:" : "Seus Apartamentos:"}
+        </Text>
 
         <View style={styles.apartmentCard}>
           <Text style={styles.apartmentTitle}>

@@ -17,7 +17,7 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   greetingText: {
-    fontSize: 26,
+    fontSize: 32,
     fontWeight: "700",
   },
   quickSection: {
@@ -25,8 +25,8 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -37,10 +37,10 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-  } as any,
+  },
   quickButton: {
     backgroundColor: "#466CA5",
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 10,
     borderRadius: 8,
     marginBottom: 8,
@@ -51,6 +51,7 @@ export const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     textAlign: "center",
+    fontSize: 20,
   },
   apartmentSection: {
     marginTop: 12,
