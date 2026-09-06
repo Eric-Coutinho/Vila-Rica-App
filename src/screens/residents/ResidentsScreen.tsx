@@ -321,8 +321,7 @@ export default function ResidentsScreen() {
                 <TouchableOpacity
                   style={styles.cardButton}
                   onPress={() => {
-                    console.log("Ver informações de", m.name);
-                    // router.push(`/morador/${m._id}`);
+                    router.push(`/residents/${m._id}`);
                   }}
                 >
                   <Text style={styles.cardButtonText}>Ver Informações</Text>
