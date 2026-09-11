@@ -149,4 +149,24 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: "#444",
   },
+    pickerWrapper: {
+    borderWidth: 1,
+    borderColor: "#747474",
+    borderRadius: 4,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+  selectElement: {
+    padding: 8,
+    fontSize: 16,
+    color: "#9b9b9b",
+  },
+    dateInput: {
+    borderWidth: 1,
+    borderColor: "#747474",
+    borderRadius: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: "#fff",
+  },
 });
