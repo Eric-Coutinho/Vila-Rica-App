@@ -136,7 +136,7 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
   },
-// Loading
+  // Loading
   loadingContainer: {
     flex: 1,
     backgroundColor: "#fff",
@@ -149,7 +149,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: "#444",
   },
-    pickerWrapper: {
+  pickerWrapper: {
     borderWidth: 1,
     borderColor: "#747474",
     borderRadius: 4,
@@ -161,12 +161,30 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: "#9b9b9b",
   },
-    dateInput: {
+  dateInput: {
     borderWidth: 1,
     borderColor: "#747474",
     borderRadius: 4,
     paddingVertical: 12,
     paddingHorizontal: 8,
     backgroundColor: "#fff",
+  },
+  deleteButton: {
+    minWidth: 100,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 6,
+    backgroundColor: "#cc0000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteButtonModal: {
+    minWidth: 100,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 6,
+    backgroundColor: "#e5e5e5",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

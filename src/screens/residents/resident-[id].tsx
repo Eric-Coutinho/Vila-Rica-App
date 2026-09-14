@@ -1,7 +1,7 @@
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -58,6 +58,8 @@ export default function ResidentDetailScreen() {
   const [resident, setResident] = useState<Resident | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [isEditing, setIsEditing] = useState(false);
+
   const [name, setName] = useState("");
   const [bloco, setBloco] = useState<string | null>(null);
   const [apartamento, setApartamento] = useState<string | null>(null);
@@ -74,8 +76,11 @@ export default function ResidentDetailScreen() {
   const [deleting, setDeleting] = useState(false);
 
   const blocos = Array.from({ length: 7 }, (_, i) => String(i + 1));
+
   const aptos = Array.from({ length: 32 }, (_, i) => String(i + 1));
+
   const relacoes = ["Morador", "Inquilino", "Proprietário"];
+
   const tiposAcesso = ["Morador", "Síndico", "Funcionário"];
 
   useEffect(() => {
@@ -88,21 +93,13 @@ export default function ResidentDetailScreen() {
     if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
       const [year, month, day] = value.substring(0, 10).split("-");
 
-      return new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day)
-      );
+      return new Date(Number(year), Number(month) - 1, Number(day));
     }
 
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
       const [day, month, year] = value.split("/");
 
-      return new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day)
-      );
+      return new Date(Number(year), Number(month) - 1, Number(day));
     }
 
     const parsed = new Date(value);
@@ -199,9 +196,7 @@ export default function ResidentDetailScreen() {
             headers["x-user-id"] = loggedUser._id;
           }
         } catch {
-          console.warn(
-            "Não foi possível interpretar o usuário armazenado."
-          );
+          console.warn("Não foi possível interpretar o usuário armazenado.");
         }
       }
 
@@ -213,16 +208,11 @@ export default function ResidentDetailScreen() {
       const data: ApiResponse = await response.json();
 
       if (!response.ok || data.ok === false) {
-        throw new Error(
-          data.message || "Não foi possível carregar o morador."
-        );
+        throw new Error(data.message || "Não foi possível carregar o morador.");
       }
 
       const userData =
-        data.user ||
-        data.resident ||
-        data.data ||
-        (data as Resident);
+        data.user || data.resident || data.data || (data as Resident);
 
       if (!userData) {
         throw new Error("A API não retornou os dados do morador.");
@@ -233,18 +223,10 @@ export default function ResidentDetailScreen() {
       setName(userData.name ?? "");
       setBloco(userData.bloco ?? null);
       setApartamento(userData.apartamento ?? null);
-      setRelacao(
-        userData.relacao ??
-          userData.relation ??
-          null
-      );
+      setRelacao(userData.relacao ?? userData.relation ?? null);
       setCpf(userData.cpf ?? "");
       setEmail(userData.email ?? "");
-      setTelefone(
-        userData.telefone ??
-          userData.phone ??
-          ""
-      );
+      setTelefone(userData.telefone ?? userData.phone ?? "");
       setBirthDate(parseBirthDate(userData.birthDate));
       setRole(userData.role ?? null);
 
@@ -253,29 +235,39 @@ export default function ResidentDetailScreen() {
           userData.lastAccess ??
             userData.accessDate ??
             userData.updatedAt ??
-            userData.createdAt
-        )
+            userData.createdAt,
+        ),
       );
+
+      setIsEditing(false);
     } catch (error: any) {
       console.error("Erro ao carregar morador:", error);
 
       Alert.alert(
         "Erro",
-        error?.message ||
-          "Não foi possível carregar os dados do morador.",
+        error?.message || "Não foi possível carregar os dados do morador.",
         [
           {
             text: "Voltar",
             onPress: () => router.back(),
           },
-        ]
+        ],
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAtualizar = () => {
+  const handlePrincipalButton = () => {
+    if (!isEditing) {
+      setIsEditing(true);
+      return;
+    }
+
+    handleConfirmar();
+  };
+
+  const handleConfirmar = () => {
     if (!name.trim()) {
       return Alert.alert("Erro", "Nome é obrigatório.");
     }
@@ -293,23 +285,12 @@ export default function ResidentDetailScreen() {
     }
 
     if (!birthDate) {
-      return Alert.alert(
-        "Erro",
-        "Informe a data de nascimento."
-      );
+      return Alert.alert("Erro", "Informe a data de nascimento.");
     }
 
     if (!role) {
-      return Alert.alert(
-        "Erro",
-        "Selecione o tipo de acesso."
-      );
+      return Alert.alert("Erro", "Selecione o tipo de acesso.");
     }
-
-    Alert.alert(
-      "Atualizar",
-      "A rota responsável por salvar as alterações ainda não foi configurada."
-    );
 
     const payload = {
       name,
@@ -324,6 +305,35 @@ export default function ResidentDetailScreen() {
     };
 
     console.log("Dados para atualização:", payload);
+
+    setIsEditing(false);
+
+    Alert.alert(
+      "Confirmar",
+      "Os dados foram confirmados localmente. A rota de atualização ainda não foi configurada.",
+    );
+  };
+
+  const handleCancelar = () => {
+    if (!isEditing) {
+      router.back();
+      return;
+    }
+
+    if (resident) {
+      setName(resident.name ?? "");
+      setBloco(resident.bloco ?? null);
+      setApartamento(resident.apartamento ?? null);
+      setRelacao(resident.relacao ?? resident.relation ?? null);
+      setCpf(resident.cpf ?? "");
+      setEmail(resident.email ?? "");
+      setTelefone(resident.telefone ?? resident.phone ?? "");
+      setBirthDate(parseBirthDate(resident.birthDate));
+      setRole(resident.role ?? null);
+    }
+
+    setShowDatePicker(false);
+    setIsEditing(false);
   };
 
   const excluirMorador = async () => {
@@ -338,37 +348,27 @@ export default function ResidentDetailScreen() {
       const storedUser = await AsyncStorage.getItem("user");
 
       if (!storedUser) {
-        throw new Error(
-          "Usuário não encontrado no armazenamento local."
-        );
+        throw new Error("Usuário não encontrado no armazenamento local.");
       }
 
       const loggedUser = JSON.parse(storedUser);
 
       if (!loggedUser?._id) {
-        throw new Error(
-          "ID do usuário logado não encontrado."
-        );
+        throw new Error("ID do usuário logado não encontrado.");
       }
 
-      const response = await fetch(
-        `${API_BASE}/auth/users/delete/${id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-user-id": loggedUser._id,
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE}/auth/users/delete/${id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": loggedUser._id,
+        },
+      });
 
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        throw new Error(
-          data.message ||
-            "Não foi possível excluir o morador."
-        );
+        throw new Error(data.message || "Não foi possível excluir o morador.");
       }
 
       setShowDeleteModal(false);
@@ -383,15 +383,14 @@ export default function ResidentDetailScreen() {
               router.replace("/residents");
             },
           },
-        ]
+        ],
       );
     } catch (error: any) {
       console.error("Erro ao excluir morador:", error);
 
       Alert.alert(
         "Erro",
-        error?.message ||
-          "Não foi possível excluir o morador."
+        error?.message || "Não foi possível excluir o morador.",
       );
     } finally {
       setDeleting(false);
@@ -401,14 +400,9 @@ export default function ResidentDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator
-          size="large"
-          color="#466CA5"
-        />
+        <ActivityIndicator size="large" color="#466CA5" />
 
-        <Text style={styles.loadingText}>
-          Carregando dados do morador...
-        </Text>
+        <Text style={styles.loadingText}>Carregando dados do morador...</Text>
       </View>
     );
   }
@@ -416,11 +410,7 @@ export default function ResidentDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={
-        Platform.OS === "ios"
-          ? "padding"
-          : undefined
-      }
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         contentContainerStyle={styles.page}
@@ -428,38 +418,30 @@ export default function ResidentDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>
-            {resident?.name || "Morador"}
-          </Text>
+          <Text style={styles.headerTitle}>{resident?.name || "Morador"}</Text>
         </View>
 
         <View style={styles.formCard}>
           <View style={styles.avatarSection}>
             <View style={styles.avatar}>
-              <Ionicons
-                name="person"
-                size={75}
-                color="#292D32"
-              />
+              <Ionicons name="person" size={75} color="#292D32" />
             </View>
 
             <TouchableOpacity
               style={styles.editAvatarButton}
               activeOpacity={0.8}
+              disabled={!isEditing}
             >
               <Ionicons
                 name="pencil"
                 size={21}
-                color="#235DFF"
+                color={isEditing ? "#235DFF" : "#999"}
               />
             </TouchableOpacity>
           </View>
 
           <Text style={styles.label}>
-            Nome{" "}
-            <Text style={styles.required}>
-              *
-            </Text>
+            Nome <Text style={styles.required}>*</Text>
           </Text>
 
           <TextInput
@@ -468,131 +450,97 @@ export default function ResidentDetailScreen() {
             placeholderTextColor="#9b9b9b"
             value={name}
             onChangeText={setName}
+            editable={isEditing}
           />
 
           <Text style={styles.label}>
-            Bloco{" "}
-            <Text style={styles.required}>
-              *
-            </Text>
+            Bloco <Text style={styles.required}>*</Text>
           </Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
               selectedValue={bloco}
-              onValueChange={(v) =>
-                setBloco(
-                  v === null ? null : String(v)
-                )
-              }
+              onValueChange={(v) => {
+                if (isEditing) {
+                  setBloco(v === null ? null : String(v));
+                }
+              }}
+              enabled={isEditing}
               mode="dropdown"
               style={[
                 styles.selectElement,
                 {
-                  color: bloco
-                    ? "#000"
-                    : "#9b9b9b",
+                  color: bloco ? "#000" : "#9b9b9b",
                 },
               ]}
             >
-              <Picker.Item
-                label="Bloco"
-                value={null}
-              />
+              <Picker.Item label="Bloco" value={null} />
 
               {blocos.map((b) => (
-                <Picker.Item
-                  key={b}
-                  label={b}
-                  value={b}
-                />
+                <Picker.Item key={b} label={b} value={b} />
               ))}
             </Picker>
           </View>
 
           <Text style={styles.label}>
-            Apartamento{" "}
-            <Text style={styles.required}>
-              *
-            </Text>
+            Apartamento <Text style={styles.required}>*</Text>
           </Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
               selectedValue={apartamento}
-              onValueChange={(v) =>
-                setApartamento(
-                  v === null ? null : String(v)
-                )
-              }
+              onValueChange={(v) => {
+                if (isEditing) {
+                  setApartamento(v === null ? null : String(v));
+                }
+              }}
+              enabled={isEditing}
               mode="dropdown"
               style={[
                 styles.selectElement,
                 {
-                  color: apartamento
-                    ? "#000"
-                    : "#9b9b9b",
+                  color: apartamento ? "#000" : "#9b9b9b",
                 },
               ]}
             >
-              <Picker.Item
-                label="Apartamento"
-                value={null}
-              />
+              <Picker.Item label="Apartamento" value={null} />
 
               {aptos.map((a) => (
-                <Picker.Item
-                  key={a}
-                  label={a}
-                  value={a}
-                />
+                <Picker.Item key={a} label={a} value={a} />
               ))}
             </Picker>
           </View>
 
           <Text style={styles.label}>
-            Relação{" "}
-            <Text style={styles.required}>
-              *
-            </Text>
+            Relação <Text style={styles.required}>*</Text>
           </Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
               selectedValue={relacao}
-              onValueChange={(v) =>
-                setRelacao(
-                  v === null ? null : String(v)
-                )
-              }
+              onValueChange={(v) => {
+                if (isEditing) {
+                  setRelacao(v === null ? null : String(v));
+                }
+              }}
+              enabled={isEditing}
               mode="dropdown"
               style={[
                 styles.selectElement,
                 {
-                  color: relacao
-                    ? "#000"
-                    : "#9b9b9b",
+                  color: relacao ? "#000" : "#9b9b9b",
                 },
               ]}
             >
-              <Picker.Item
-                label="Relação"
-                value={null}
-              />
+              <Picker.Item label="Relação" value={null} />
 
               {relacoes.map((r) => (
-                <Picker.Item
-                  key={r}
-                  label={r}
-                  value={r}
-                />
+                <Picker.Item key={r} label={r} value={r} />
               ))}
             </Picker>
           </View>
 
-          <Text style={styles.label}>
-            CPF
-          </Text>
+          <Text style={styles.label}>CPF</Text>
 
           <TextInput
             placeholder="CPF..."
@@ -601,11 +549,10 @@ export default function ResidentDetailScreen() {
             value={cpf}
             onChangeText={setCpf}
             keyboardType="numeric"
+            editable={isEditing}
           />
 
-          <Text style={styles.label}>
-            Email
-          </Text>
+          <Text style={styles.label}>Email</Text>
 
           <TextInput
             placeholder="Email@example.com"
@@ -615,13 +562,11 @@ export default function ResidentDetailScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={isEditing}
           />
 
           <Text style={styles.label}>
-            Data de nascimento{" "}
-            <Text style={styles.required}>
-              *
-            </Text>
+            Data de nascimento <Text style={styles.required}>*</Text>
           </Text>
 
           {Platform.OS === "web" ? (
@@ -629,6 +574,7 @@ export default function ResidentDetailScreen() {
               type="date"
               value={dateToWebValue(birthDate)}
               onChange={onChangeDateWeb}
+              disabled={!isEditing}
               style={{
                 boxSizing: "border-box",
                 width: "100%",
@@ -637,38 +583,40 @@ export default function ResidentDetailScreen() {
                 borderStyle: "solid",
                 borderColor: "#747474",
                 borderRadius: 4,
-                backgroundColor: "#fff",
+                backgroundColor: isEditing ? "#fff" : "#f2f2f2",
                 fontSize: 16,
+                color: "#000",
               }}
             />
           ) : (
             <>
               <TouchableOpacity
                 activeOpacity={0.8}
-                style={styles.dateInput}
-                onPress={() =>
-                  setShowDatePicker(true)
-                }
+                style={[
+                  styles.dateInput,
+                  {
+                    backgroundColor: isEditing ? "#fff" : "#f2f2f2",
+                  },
+                ]}
+                onPress={() => {
+                  if (isEditing) {
+                    setShowDatePicker(true);
+                  }
+                }}
+                disabled={!isEditing}
               >
                 <Text
                   style={{
-                    color: birthDate
-                      ? "#000"
-                      : "#777",
+                    color: birthDate ? "#000" : "#777",
                   }}
                 >
-                  {birthDate
-                    ? formatDate(birthDate)
-                    : "Data de nascimento..."}
+                  {birthDate ? formatDate(birthDate) : "Data de nascimento..."}
                 </Text>
               </TouchableOpacity>
 
-              {showDatePicker && (
+              {showDatePicker && isEditing && (
                 <DateTimePicker
-                  value={
-                    birthDate ??
-                    new Date(2000, 0, 1)
-                  }
+                  value={birthDate ?? new Date(2000, 0, 1)}
                   mode="date"
                   display="default"
                   maximumDate={new Date()}
@@ -679,48 +627,35 @@ export default function ResidentDetailScreen() {
           )}
 
           <Text style={styles.label}>
-            Tipo de acesso{" "}
-            <Text style={styles.required}>
-              *
-            </Text>
+            Tipo de acesso <Text style={styles.required}>*</Text>
           </Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
               selectedValue={role}
-              onValueChange={(v) =>
-                setRole(
-                  v === null ? null : String(v)
-                )
-              }
+              onValueChange={(v) => {
+                if (isEditing) {
+                  setRole(v === null ? null : String(v));
+                }
+              }}
+              enabled={isEditing}
               mode="dropdown"
               style={[
                 styles.selectElement,
                 {
-                  color: role
-                    ? "#000"
-                    : "#9b9b9b",
+                  color: role ? "#000" : "#9b9b9b",
                 },
               ]}
             >
-              <Picker.Item
-                label="Acesso"
-                value={null}
-              />
+              <Picker.Item label="Acesso" value={null} />
 
               {tiposAcesso.map((t) => (
-                <Picker.Item
-                  key={t}
-                  label={t}
-                  value={t}
-                />
+                <Picker.Item key={t} label={t} value={t} />
               ))}
             </Picker>
           </View>
 
-          <Text style={styles.lastAccessLabel}>
-            Data da última alteração:
-          </Text>
+          <Text style={styles.lastAccessLabel}>Data da última alteração:</Text>
 
           <Text style={styles.lastAccessValue}>
             {lastAccess || "Não informado"}
@@ -729,21 +664,21 @@ export default function ResidentDetailScreen() {
 
         <TouchableOpacity
           style={styles.registerButton}
-          onPress={handleAtualizar}
+          onPress={handlePrincipalButton}
           activeOpacity={0.85}
         >
           <Text style={styles.registerButtonText}>
-            Atualizar
+            {isEditing ? "Confirmar" : "Alterar dados"}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={() => router.back()}
+          onPress={handleCancelar}
           activeOpacity={0.85}
         >
           <Text style={styles.cancelButtonText}>
-            Cancelar
+            {isEditing ? "Cancelar" : "Voltar"}
           </Text>
         </TouchableOpacity>
 
@@ -821,7 +756,11 @@ export default function ResidentDetailScreen() {
               }}
             >
               Tem certeza que deseja excluir{" "}
-              <Text style={{ fontWeight: "700" }}>
+              <Text
+                style={{
+                  fontWeight: "700",
+                }}
+              >
                 {resident?.name ?? "este morador"}
               </Text>
               ?
@@ -835,18 +774,8 @@ export default function ResidentDetailScreen() {
               }}
             >
               <TouchableOpacity
-                style={{
-                  minWidth: 100,
-                  paddingVertical: 12,
-                  paddingHorizontal: 18,
-                  borderRadius: 6,
-                  backgroundColor: "#e5e5e5",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                onPress={() =>
-                  setShowDeleteModal(false)
-                }
+                style={styles.deleteButtonModal}
+                onPress={() => setShowDeleteModal(false)}
                 activeOpacity={0.85}
                 disabled={deleting}
               >
@@ -862,15 +791,7 @@ export default function ResidentDetailScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{
-                  minWidth: 100,
-                  paddingVertical: 12,
-                  paddingHorizontal: 18,
-                  borderRadius: 6,
-                  backgroundColor: "#cc0000",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                style={styles.deleteButton}
                 onPress={excluirMorador}
                 activeOpacity={0.85}
                 disabled={deleting}
@@ -878,15 +799,7 @@ export default function ResidentDetailScreen() {
                 {deleting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text
-                    style={{
-                      color: "#fff",
-                      fontSize: 15,
-                      fontWeight: "700",
-                    }}
-                  >
-                    Excluir
-                  </Text>
+                  <Text style={styles.cancelButtonText}>Excluir</Text>
                 )}
               </TouchableOpacity>
             </View>
