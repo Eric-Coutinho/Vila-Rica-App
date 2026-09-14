@@ -267,51 +267,126 @@ export default function ResidentDetailScreen() {
     handleConfirmar();
   };
 
-  const handleConfirmar = () => {
+  const handleConfirmar = async () => {
+    if (!id) {
+      return alert("Erro ID do morador não encontrado.");
+    }
+
     if (!name.trim()) {
-      return Alert.alert("Erro", "Nome é obrigatório.");
+      return alert("Erro Nome é obrigatório.");
     }
 
     if (!bloco) {
-      return Alert.alert("Erro", "Selecione o Bloco.");
+      return alert("Erro Selecione o Bloco.");
     }
 
     if (!apartamento) {
-      return Alert.alert("Erro", "Selecione o Apartamento.");
+      return alert("Erro Selecione o Apartamento.");
     }
 
     if (!relacao) {
-      return Alert.alert("Erro", "Selecione a Relação.");
+      return alert("Erro Selecione a Relação.");
     }
 
     if (!birthDate) {
-      return Alert.alert("Erro", "Informe a data de nascimento.");
+      return alert("Erro Informe a data de nascimento.");
     }
 
     if (!role) {
-      return Alert.alert("Erro", "Selecione o tipo de acesso.");
+      return alert("Erro Selecione o tipo de acesso.");
     }
 
-    const payload = {
-      name,
-      bloco,
-      apartamento,
-      relacao,
-      cpf,
-      email,
-      telefone,
-      birthDate: formatDateForApi(birthDate),
-      role,
-    };
+    try {
+      const storedUser = await AsyncStorage.getItem("user");
 
-    console.log("Dados para atualização:", payload);
+      if (!storedUser) {
+        throw new Error("Usuário não encontrado no armazenamento local.");
+      }
 
-    setIsEditing(false);
+      const loggedUser = JSON.parse(storedUser);
 
-    Alert.alert(
-      "Confirmar",
-      "Os dados foram confirmados localmente. A rota de atualização ainda não foi configurada.",
-    );
+      if (!loggedUser?._id) {
+        throw new Error("ID do usuário logado não encontrado.");
+      }
+
+      const payload = {
+        name: name.trim(),
+        bloco,
+        apartamento,
+        relacao,
+        cpf: cpf.trim(),
+        email: email.trim(),
+        telefone: telefone.trim(),
+        birthDate: formatDateForApi(birthDate),
+        role,
+      };
+
+      const response = await fetch(`${API_BASE}/auth/users/update/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": loggedUser._id,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.ok === false) {
+        throw new Error(
+          data.message || "Não foi possível atualizar os dados do morador.",
+        );
+      }
+
+      const updatedUser = data.user || data.resident || data.data;
+
+      if (updatedUser) {
+        setResident(updatedUser);
+
+        setName(updatedUser.name ?? "");
+        setBloco(updatedUser.bloco ?? null);
+        setApartamento(updatedUser.apartamento ?? null);
+        setRelacao(updatedUser.relacao ?? updatedUser.relation ?? null);
+        setCpf(updatedUser.cpf ?? "");
+        setEmail(updatedUser.email ?? "");
+        setTelefone(updatedUser.telefone ?? updatedUser.phone ?? "");
+        setBirthDate(parseBirthDate(updatedUser.birthDate));
+        setRole(updatedUser.role ?? null);
+
+        setLastAccess(
+          formatDateTime(
+            updatedUser.lastAccess ??
+              updatedUser.accessDate ??
+              updatedUser.updatedAt ??
+              updatedUser.createdAt,
+          ),
+        );
+      } else {
+        setResident((current) => ({
+          ...current,
+          _id: id,
+          name,
+          bloco,
+          apartamento,
+          relacao,
+          cpf,
+          email,
+          telefone,
+          birthDate: formatDateForApi(birthDate),
+          role,
+        }));
+      }
+
+      setShowDatePicker(false);
+      setIsEditing(false);
+
+      alert("Sucesso, os dados do morador foram atualizados com sucesso.");
+    } catch (error: any) {
+      console.error("Erro ao atualizar morador:", error);
+
+      alert(`Erro, ${error?.message || "Não foi possível atualizar os dados do morador."}`,
+      );
+    }
   };
 
   const handleCancelar = () => {
