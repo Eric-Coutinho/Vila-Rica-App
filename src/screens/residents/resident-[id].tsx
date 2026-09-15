@@ -492,12 +492,6 @@ export default function ResidentDetailScreen() {
           <Text style={styles.headerTitle}>{resident?.name || "Morador"} {
           isEditing ? 
           <Ionicons name="trash" size={25} color="#cc0000" onPress={() => setShowDeleteModal(true)} />
-        //   <TouchableOpacity
-        //   style={styles.deleteButton}
-        //   onPress={() => setShowDeleteModal(true)}
-        //   activeOpacity={0.85}
-        //   disabled={deleting}
-        // ></TouchableOpacity>
           : <></>
           }</Text>
         </View>
@@ -763,19 +757,6 @@ export default function ResidentDetailScreen() {
         >
           <Text style={styles.cancelButtonText}>
             {isEditing ? "Cancelar" : "Voltar"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => setShowDeleteModal(true)}
-          activeOpacity={0.85}
-          disabled={deleting}
-        >
-          <Text
-            style={styles.deleteButtonText}
-          >
-            Excluir Morador
           </Text>
         </TouchableOpacity>
       </ScrollView>

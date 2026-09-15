@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -102,9 +102,11 @@ export default function ResidentsScreen() {
     }
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(
+  React.useCallback(() => {
     carregarMoradores();
-  }, [carregarMoradores]);
+  }, [carregarMoradores])
+);
 
   const blocos = useMemo(() => {
     const values = moradores
@@ -300,9 +302,12 @@ export default function ResidentsScreen() {
                 </Text>
 
                 <Text style={styles.cardSmall}>
-                  {m.bloco ??
+                  Bloco: {m.bloco ??
                     "Bloco não informado"}{" "}
-                  {m.apartamento ??
+                </Text>
+
+                <Text style={styles.cardSmall}>
+                  Apartamento: {m.apartamento ??
                     "Apartamento não informado"}
                 </Text>
 
