@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ConfirmModal from "../../components/ConfirmModal.tsx";
 
 import { styles } from "./resident-id-styles";
 
@@ -74,6 +75,8 @@ export default function ResidentDetailScreen() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   const blocos = Array.from({ length: 7 }, (_, i) => String(i + 1));
 
@@ -264,7 +267,8 @@ export default function ResidentDetailScreen() {
       return;
     }
 
-    handleConfirmar();
+    setShowUpdateModal(true);
+    // handleConfirmar();
   };
 
   const handleConfirmar = async () => {
@@ -297,6 +301,7 @@ export default function ResidentDetailScreen() {
     }
 
     try {
+      setUpdating(true);
       const storedUser = await AsyncStorage.getItem("user");
 
       if (!storedUser) {
@@ -387,6 +392,9 @@ export default function ResidentDetailScreen() {
       alert(`Erro, ${error?.message || "Não foi possível atualizar os dados do morador."}`,
       );
     }
+    finally {
+      setUpdating(false);
+    }
   };
 
   const handleCancelar = () => {
@@ -448,25 +456,13 @@ export default function ResidentDetailScreen() {
 
       setShowDeleteModal(false);
 
-      Alert.alert(
-        "Sucesso",
-        `${resident?.name ?? "Morador"} foi excluído com sucesso.`,
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              router.replace("/residents");
-            },
-          },
-        ],
-      );
+      alert(`Sucesso, ${resident?.name ?? "Morador"} foi excluído com sucesso.`);
+
+      router.back();
     } catch (error: any) {
       console.error("Erro ao excluir morador:", error);
 
-      Alert.alert(
-        "Erro",
-        error?.message || "Não foi possível excluir o morador.",
-      );
+      alert("Erro, não foi possível excluir o morador.");
     } finally {
       setDeleting(false);
     }
@@ -493,7 +489,17 @@ export default function ResidentDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{resident?.name || "Morador"}</Text>
+          <Text style={styles.headerTitle}>{resident?.name || "Morador"} {
+          isEditing ? 
+          <Ionicons name="trash" size={25} color="#cc0000" onPress={() => setShowDeleteModal(true)} />
+        //   <TouchableOpacity
+        //   style={styles.deleteButton}
+        //   onPress={() => setShowDeleteModal(true)}
+        //   activeOpacity={0.85}
+        //   disabled={deleting}
+        // ></TouchableOpacity>
+          : <></>
+          }</Text>
         </View>
 
         <View style={styles.formCard}>
@@ -501,19 +507,22 @@ export default function ResidentDetailScreen() {
             <View style={styles.avatar}>
               <Ionicons name="person" size={75} color="#292D32" />
             </View>
-
+          {
+          isEditing ?
             <TouchableOpacity
-              style={styles.editAvatarButton}
+            style={styles.editAvatarButton}
               activeOpacity={0.8}
               disabled={!isEditing}
             >
               <Ionicons
                 name="pencil"
                 size={21}
-                color={isEditing ? "#235DFF" : "#999"}
-              />
+                color="#235DFF"
+                />
             </TouchableOpacity>
-          </View>
+            : <></>  
+            }
+        </View>
 
           <Text style={styles.label}>
             Nome <Text style={styles.required}>*</Text>
@@ -758,129 +767,39 @@ export default function ResidentDetailScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={{
-            marginTop: 12,
-            width: "100%",
-            paddingVertical: 13,
-            borderRadius: 6,
-            backgroundColor: "#cc0000",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          style={styles.deleteButton}
           onPress={() => setShowDeleteModal(true)}
           activeOpacity={0.85}
           disabled={deleting}
         >
           <Text
-            style={{
-              color: "#fff",
-              fontSize: 16,
-              fontWeight: "700",
-            }}
+            style={styles.deleteButtonText}
           >
             Excluir Morador
           </Text>
         </TouchableOpacity>
       </ScrollView>
 
-      <Modal
+      <ConfirmModal
         visible={showDeleteModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!deleting) {
-            setShowDeleteModal(false);
-          }
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.45)",
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 20,
-          }}
-        >
-          <View
-            style={{
-              width: "100%",
-              maxWidth: 450,
-              backgroundColor: "#fff",
-              borderRadius: 10,
-              padding: 22,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "700",
-                color: "#222",
-                marginBottom: 12,
-              }}
-            >
-              Excluir morador
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 16,
-                lineHeight: 23,
-                color: "#444",
-                marginBottom: 22,
-              }}
-            >
-              Tem certeza que deseja excluir{" "}
-              <Text
-                style={{
-                  fontWeight: "700",
-                }}
-              >
-                {resident?.name ?? "este morador"}
-              </Text>
-              ?
-            </Text>
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "flex-end",
-                gap: 10,
-              }}
-            >
-              <TouchableOpacity
-                style={styles.deleteButtonModal}
-                onPress={() => setShowDeleteModal(false)}
-                activeOpacity={0.85}
-                disabled={deleting}
-              >
-                <Text
-                  style={{
-                    color: "#333",
-                    fontSize: 15,
-                    fontWeight: "600",
-                  }}
-                >
-                  Cancelar
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={excluirMorador}
-                activeOpacity={0.85}
-                disabled={deleting}
-              >
-                {deleting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.cancelButtonText}>Excluir</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title="Excluir morador"
+        text={`Tem certeza que deseja excluir ${resident?.name ?? "este morador"}?`}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={excluirMorador}
+        cancelText="Cancelar"
+        confirmText="Excluir"
+        loading={deleting}
+      />
+      <ConfirmModal
+        visible={showUpdateModal}
+        title="Confirmar alteração"
+        text="Tem certeza que deseja salvar as alterações deste morador?"
+        onCancel={() => setShowUpdateModal(false)}
+        onConfirm={handleConfirmar}
+        cancelText="Cancelar"
+        confirmText="Confirmar"
+        loading={updating}
+      />
     </KeyboardAvoidingView>
   );
 }

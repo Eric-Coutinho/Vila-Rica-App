@@ -177,6 +177,12 @@ export const styles = StyleSheet.create({
     backgroundColor: "#cc0000",
     alignItems: "center",
     justifyContent: "center",
+    marginBlock: 12,
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
   deleteButtonModal: {
     minWidth: 100,
