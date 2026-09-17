@@ -1,8 +1,10 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -43,7 +45,8 @@ export default function PartySaloonScreen() {
   const [isSindico, setIsSindico] = useState(false);
 
   const [filterReservedBy, setFilterReservedBy] = useState("");
-  const [filterDate, setFilterDate] = useState("");
+  const [filterDate, setFilterDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -118,7 +121,7 @@ export default function PartySaloonScreen() {
           {
             method: "GET",
             headers,
-          }
+          },
         );
 
         console.log("Resposta da API:", res);
@@ -126,11 +129,7 @@ export default function PartySaloonScreen() {
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
 
-          console.warn(
-            "Falha ao buscar reservas:",
-            res.status,
-            errBody
-          );
+          console.warn("Falha ao buscar reservas:", res.status, errBody);
 
           if (!mounted) return;
 
@@ -157,10 +156,7 @@ export default function PartySaloonScreen() {
 
           occasion: r.occasion || "Sem ocasião",
 
-          status:
-            r.status === "closed"
-              ? "closed"
-              : "active",
+          status: r.status === "closed" ? "closed" : "active",
 
           reservedBy: {
             email: r.reservedBy?.email || "",
@@ -169,9 +165,7 @@ export default function PartySaloonScreen() {
             bloco: r.reservedBy?.bloco || "",
           },
 
-          guests: Array.isArray(r.guests)
-            ? r.guests
-            : [],
+          guests: Array.isArray(r.guests) ? r.guests : [],
         }));
 
         if (!mounted) return;
@@ -211,7 +205,7 @@ export default function PartySaloonScreen() {
     const date = new Date(dateString);
 
     if (isNaN(date.valueOf())) {
-      return dateString;
+      return "";
     }
 
     const dd = String(date.getDate()).padStart(2, "0");
@@ -221,18 +215,50 @@ export default function PartySaloonScreen() {
     return `${dd}/${mm}/${yyyy}`;
   };
 
+  const formatFilterDate = (date: Date | null) => {
+    if (!date) return "";
+
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const onChangeDate = (event: any, selected?: Date) => {
+    setShowDatePicker(Platform.OS === "ios");
+
+    if (selected) {
+      setFilterDate(selected);
+    }
+  };
+
+  const onChangeDateWeb = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+
+    if (!value) {
+      setFilterDate(null);
+      return;
+    }
+
+    const [year, month, day] = value.split("-").map(Number);
+
+    const date = new Date(year, month - 1, day);
+
+    setFilterDate(date);
+  };
+
   const filtered = reservations.filter((reservation) => {
     const formattedDate = formatDate(reservation.date);
 
     const byReservedBy =
       filterReservedBy.trim() === "" ||
       reservation.reservedBy.name
-      .toLowerCase()
-      .includes(filterReservedBy.toLowerCase());
+        .toLowerCase()
+        .includes(filterReservedBy.toLowerCase());
 
     const byDate =
-      filterDate.trim() === "" ||
-      formattedDate.includes(filterDate);
+      !filterDate || formattedDate === formatFilterDate(filterDate);
 
     const byStatus =
       !filterStatus || filterStatus === "all"
@@ -246,30 +272,75 @@ export default function PartySaloonScreen() {
     <ScrollView contentContainerStyle={styles.page}>
       <Text style={styles.headerTitle}>Salão de Festas</Text>
 
-      {isSindico && (
-        <TouchableOpacity
-          style={styles.newNoticeButton}
-          activeOpacity={0.85}
-          onPress={() => {
-            // router.push("/create-party-saloon");
-          }}
-        >
-          <Text style={styles.newNoticeButtonText}>
-            Nova Reserva
-          </Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.newNoticeButton}
+        activeOpacity={0.85}
+        onPress={() => {
+          // router.push("/create-party-saloon");
+        }}
+      >
+        <Text style={styles.newNoticeButtonText}>Nova Reserva</Text>
+      </TouchableOpacity>
 
       <View style={styles.filtersRow}>
         <View style={styles.inputSmallWrap}>
           <Text style={styles.smallLabel}>Data</Text>
 
-          <TextInput
-            placeholder="dd/mm/aaaa"
-            value={filterDate}
-            onChangeText={setFilterDate}
-            style={styles.smallInput}
-          />
+          {Platform.OS === "web" ? (
+            <input
+              type="date"
+              value={
+                filterDate
+                  ? `${filterDate.getFullYear()}-${String(
+                      filterDate.getMonth() + 1,
+                    ).padStart(2, "0")}-${String(filterDate.getDate()).padStart(
+                      2,
+                      "0",
+                    )}`
+                  : ""
+              }
+              onChange={onChangeDateWeb}
+              style={{
+                boxSizing: "border-box",
+                width: "100%",
+                height: 37,
+                padding: 12,
+                borderWidth: 1,
+                borderStyle: "solid",
+                borderColor: "#747474",
+                borderRadius: 4,
+                backgroundColor: "#fff",
+                fontSize: 16,
+              }}
+            />
+          ) : (
+            <>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.smallInput}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text
+                  style={{
+                    color: filterDate ? "#000" : "#777",
+                  }}
+                >
+                  {filterDate
+                    ? formatFilterDate(filterDate)
+                    : "Selecione uma data..."}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={filterDate ?? new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={onChangeDate}
+                />
+              )}
+            </>
+          )}
         </View>
 
         <View style={styles.inputSmallWrap}>
@@ -285,7 +356,7 @@ export default function PartySaloonScreen() {
                     ? "active"
                     : prev === "active"
                       ? "closed"
-                      : null
+                      : null,
               )
             }
           >
@@ -301,9 +372,7 @@ export default function PartySaloonScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.smallLabel}>
-          Reservado por
-        </Text>
+        <Text style={styles.smallLabel}>Reservado por</Text>
 
         <TextInput
           placeholder="Filtro por nome..."
@@ -315,23 +384,16 @@ export default function PartySaloonScreen() {
 
       <View style={{ marginBlock: 22 }}>
         {filtered.map((reservation) => (
-          <View
-            key={reservation.id}
-            style={styles.avisoCard}
-          >
+          <View key={reservation.id} style={styles.avisoCard}>
             <View style={styles.avisoHeader}>
-              <Text style={styles.avisoTitle}>
-                {reservation.occasion}
-              </Text>
+              <Text style={styles.avisoTitle}>{reservation.occasion}</Text>
 
               <View
                 style={[
                   styles.statusDot,
                   {
                     backgroundColor:
-                      reservation.status === "active"
-                        ? "#2ecc71"
-                        : "#e74c3c",
+                      reservation.status === "active" ? "#2ecc71" : "#e74c3c",
                   },
                 ]}
               />
@@ -341,17 +403,15 @@ export default function PartySaloonScreen() {
               Data: {formatDate(reservation.date)}
             </Text>
 
-            <Text style={styles.avisoDate}>
-              Horário: {reservation.time}
-            </Text>
+            <Text style={styles.avisoDate}>Horário: {reservation.time}</Text>
 
             <Text style={styles.avisoRef}>
               Reservado por: {reservation.reservedBy.name}
             </Text>
 
             <Text style={styles.avisoRef}>
-              Bloco {reservation.reservedBy.bloco} •
-              Apartamento {reservation.reservedBy.apartamento}
+              Bloco {reservation.reservedBy.bloco} • Apartamento{" "}
+              {reservation.reservedBy.apartamento}
             </Text>
 
             <TouchableOpacity
@@ -360,18 +420,14 @@ export default function PartySaloonScreen() {
                 // router.push(`/reservations/${reservation.id}`);
               }}
             >
-              <Text style={styles.cardButtonText}>
-                Ver Reserva
-              </Text>
+              <Text style={styles.cardButtonText}>Ver Reserva</Text>
             </TouchableOpacity>
           </View>
         ))}
 
         {filtered.length === 0 && (
           <View style={styles.emptyBox}>
-            <Text>
-              Nenhuma reserva encontrada.
-            </Text>
+            <Text>Nenhuma reserva encontrada.</Text>
           </View>
         )}
       </View>
