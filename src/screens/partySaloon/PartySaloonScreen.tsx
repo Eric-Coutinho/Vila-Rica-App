@@ -14,14 +14,26 @@ import { styles } from "./PartySaloonScreenStyles";
 
 const API_BASE = "http://localhost:3000/api";
 
-type Aviso = {
+type Reservation = {
   id: string;
-  title: string;
-  startDate?: string;
-  endDate?: string;
-  date?: string;
-  reference: string;
+  type: "party_saloon" | "move";
+  date: string;
+  time: string;
+  occasion: string;
   status: "active" | "closed";
+
+  reservedBy: {
+    email: string;
+    name: string;
+    apartamento: string;
+    bloco: string;
+  };
+
+  guests: {
+    name: string;
+    cpf: string;
+    birthDate: string;
+  }[];
 };
 
 export default function PartySaloonScreen() {
@@ -29,43 +41,49 @@ export default function PartySaloonScreen() {
 
   const [loading, setLoading] = useState(true);
   const [isSindico, setIsSindico] = useState(false);
-  const [filterTitle, setFilterTitle] = useState("");
+
+  const [filterReservedBy, setFilterReservedBy] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
-  const [avisos, setAvisos] = useState<Aviso[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
 
   useEffect(() => {
     let mounted = true;
+
     async function loadUserRole() {
       try {
-        const raw = await AsyncStorage.getItem("user");
-        let userObj: any = null;
-        if (raw) {
-          userObj = JSON.parse(raw);
-        } else if (typeof localStorage !== "undefined") {
-          const raw2 = localStorage.getItem("user");
-          if (raw2) userObj = JSON.parse(raw2);
-        }
+        const raw =
+          (await AsyncStorage.getItem("user")) ||
+          (typeof localStorage !== "undefined"
+            ? localStorage.getItem("user")
+            : null);
+
+        const userObj = raw ? JSON.parse(raw) : null;
 
         if (!mounted) return;
 
-        if (userObj && userObj.role) {
+        if (userObj?.role) {
           const role = String(userObj.role)
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
-          setIsSindico(role === "sindico");
+
+          setIsSindico(role === "sindico" || role === "admin");
         } else {
           setIsSindico(false);
         }
       } catch (err) {
         console.warn("Erro ao ler user do storage:", err);
-        if (mounted) setIsSindico(false);
+
+        if (mounted) {
+          setIsSindico(false);
+        }
       }
     }
 
     loadUserRole();
+
     return () => {
       mounted = false;
     };
@@ -73,89 +91,107 @@ export default function PartySaloonScreen() {
 
   useEffect(() => {
     let mounted = true;
-    async function fetchNotices() {
+
+    async function fetchReservations() {
       setLoading(true);
+
       try {
         const raw =
           (await AsyncStorage.getItem("user")) ||
           (typeof localStorage !== "undefined"
             ? localStorage.getItem("user")
             : null);
+
         const parsed = raw ? JSON.parse(raw) : null;
         const userId = parsed?._id || parsed?.id;
 
-        const headers: any = { "Content-Type": "application/json" };
-        if (userId) headers["x-user-id"] = String(userId);
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
 
-        const res = await fetch(`${API_BASE}/notices`, {
-          method: "GET",
-          headers,
-        });
+        if (userId) {
+          headers["x-user-id"] = String(userId);
+        }
+
+        const res = await fetch(
+          `${API_BASE}/reservation/list-reservations/party_saloon`,
+          {
+            method: "GET",
+            headers,
+          }
+        );
+
+        console.log("Resposta da API:", res);
 
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
-          console.warn("Falha ao buscar avisos:", res.status, errBody);
+
+          console.warn(
+            "Falha ao buscar reservas:",
+            res.status,
+            errBody
+          );
+
           if (!mounted) return;
-          setAvisos([]);
+
+          setReservations([]);
           return;
         }
 
         const body = await res.json().catch(() => ({}));
-        const noticesArray: any[] = Array.isArray(body)
+
+        console.log("Body das reservas:", body);
+
+        const reservationsArray: any[] = Array.isArray(body)
           ? body
-          : body.notices || body.data || [];
-        const mapped: Aviso[] = (noticesArray || []).map((n: any) => {
-          const toDisplay = (iso: any) => {
-            if (!iso) return undefined;
-            const d = new Date(iso);
-            if (isNaN(d.valueOf())) return undefined;
-            const dd = String(d.getDate()).padStart(2, "0");
-            const mm = String(d.getMonth() + 1).padStart(2, "0");
-            const yyyy = d.getFullYear();
-            return `${dd}/${mm}/${yyyy}`;
-          };
+          : body.reservations || body.data || [];
 
-          let reference = "—";
-          if (Array.isArray(n.referente) && n.referente.length > 0) {
-            const r = n.referente[0];
-            const kind = (r.kind || r.type || "").toString();
-            const refId = r.refId ?? r.value ?? "";
-            if (String(kind).toLowerCase().includes("todo"))
-              reference = "Todos";
-            else if (String(kind).toLowerCase().includes("bloco"))
-              reference = `Bloco ${refId || ""}`.trim();
-            else if (String(kind).toLowerCase().includes("apart"))
-              reference = `Apartamento ${refId || ""}`.trim();
-            else if (String(kind).toLowerCase().includes("morad"))
-              reference = `Morador ${refId || ""}`.trim();
-            else reference = kind;
-          }
+        const mapped: Reservation[] = reservationsArray.map((r: any) => ({
+          id: String(r._id || r.id || ""),
 
-          return {
-            id: String(n._id || n.id || ""),
-            title: n.title || n.name || "Sem título",
-            startDate: toDisplay(n.startDate || n.createdAt || n.date),
-            endDate: toDisplay(n.endDate),
-            date: toDisplay(n.startDate || n.createdAt || n.date),
-            reference,
-            status: (n.status === "closed" ? "closed" : "active") as
-              | "active"
-              | "closed",
-          } as Aviso;
-        });
+          type: r.type,
+
+          date: r.date || "",
+
+          time: r.time || "",
+
+          occasion: r.occasion || "Sem ocasião",
+
+          status:
+            r.status === "closed"
+              ? "closed"
+              : "active",
+
+          reservedBy: {
+            email: r.reservedBy?.email || "",
+            name: r.reservedBy?.name || "Usuário não informado",
+            apartamento: r.reservedBy?.apartamento || "",
+            bloco: r.reservedBy?.bloco || "",
+          },
+
+          guests: Array.isArray(r.guests)
+            ? r.guests
+            : [],
+        }));
 
         if (!mounted) return;
-        setAvisos(mapped);
+
+        setReservations(mapped);
       } catch (err) {
-        console.error("Erro ao buscar avisos:", err);
+        console.error("Erro ao buscar reservas:", err);
+
         if (!mounted) return;
-        setAvisos([]);
+
+        setReservations([]);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
-    fetchNotices();
+    fetchReservations();
+
     return () => {
       mounted = false;
     };
@@ -169,20 +205,41 @@ export default function PartySaloonScreen() {
     );
   }
 
-  const filtered = avisos.filter((a) => {
-    const byTitle =
-      filterTitle.trim() === "" ||
-      a.title.toLowerCase().includes(filterTitle.toLowerCase());
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+
+    if (isNaN(date.valueOf())) {
+      return dateString;
+    }
+
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const filtered = reservations.filter((reservation) => {
+    const formattedDate = formatDate(reservation.date);
+
+    const byReservedBy =
+      filterReservedBy.trim() === "" ||
+      reservation.reservedBy.name
+      .toLowerCase()
+      .includes(filterReservedBy.toLowerCase());
+
     const byDate =
       filterDate.trim() === "" ||
-      (a.date && a.date.includes(filterDate)) ||
-      (a.startDate && a.startDate.includes(filterDate)) ||
-      (a.endDate && a.endDate.includes(filterDate));
+      formattedDate.includes(filterDate);
+
     const byStatus =
       !filterStatus || filterStatus === "all"
         ? true
-        : a.status === filterStatus;
-    return byTitle && byDate && byStatus;
+        : reservation.status === filterStatus;
+
+    return byReservedBy && byDate && byStatus;
   });
 
   return (
@@ -194,16 +251,19 @@ export default function PartySaloonScreen() {
           style={styles.newNoticeButton}
           activeOpacity={0.85}
           onPress={() => {
-            router.push("/create-notice");
+            // router.push("/create-party-saloon");
           }}
         >
-          <Text style={styles.newNoticeButtonText}>Novo Aviso</Text>
+          <Text style={styles.newNoticeButtonText}>
+            Nova Reserva
+          </Text>
         </TouchableOpacity>
       )}
 
       <View style={styles.filtersRow}>
         <View style={styles.inputSmallWrap}>
           <Text style={styles.smallLabel}>Data</Text>
+
           <TextInput
             placeholder="dd/mm/aaaa"
             value={filterDate}
@@ -214,6 +274,7 @@ export default function PartySaloonScreen() {
 
         <View style={styles.inputSmallWrap}>
           <Text style={styles.smallLabel}>Status</Text>
+
           <TouchableOpacity
             style={styles.selectSmall}
             onPress={() =>
@@ -224,7 +285,7 @@ export default function PartySaloonScreen() {
                     ? "active"
                     : prev === "active"
                       ? "closed"
-                      : null,
+                      : null
               )
             }
           >
@@ -240,66 +301,80 @@ export default function PartySaloonScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.smallLabel}>Título</Text>
+        <Text style={styles.smallLabel}>
+          Reservado por
+        </Text>
+
         <TextInput
-          placeholder="Filtro por título..."
-          value={filterTitle}
-          onChangeText={setFilterTitle}
+          placeholder="Filtro por nome..."
+          value={filterReservedBy}
+          onChangeText={setFilterReservedBy}
           style={styles.smallInput}
         />
       </View>
 
       <View style={{ marginBlock: 22 }}>
-        {filtered.map((a) => (
-          <View key={a.id} style={styles.avisoCard}>
+        {filtered.map((reservation) => (
+          <View
+            key={reservation.id}
+            style={styles.avisoCard}
+          >
             <View style={styles.avisoHeader}>
-              <Text style={styles.avisoTitle}>{a.title}</Text>
+              <Text style={styles.avisoTitle}>
+                {reservation.occasion}
+              </Text>
+
               <View
                 style={[
                   styles.statusDot,
                   {
                     backgroundColor:
-                      a.status === "active" ? "#2ecc71" : "#e74c3c",
+                      reservation.status === "active"
+                        ? "#2ecc71"
+                        : "#e74c3c",
                   },
                 ]}
               />
             </View>
 
             <Text style={styles.avisoDate}>
-              {a.startDate && a.endDate
-                ? `${a.startDate} - ${a.endDate}`
-                : (a.date ?? "")}
+              Data: {formatDate(reservation.date)}
             </Text>
 
-            <Text style={styles.avisoRef}>Referente a: {a.reference}</Text>
+            <Text style={styles.avisoDate}>
+              Horário: {reservation.time}
+            </Text>
+
+            <Text style={styles.avisoRef}>
+              Reservado por: {reservation.reservedBy.name}
+            </Text>
+
+            <Text style={styles.avisoRef}>
+              Bloco {reservation.reservedBy.bloco} •
+              Apartamento {reservation.reservedBy.apartamento}
+            </Text>
 
             <TouchableOpacity
               style={styles.cardButton}
               onPress={() => {
-                router.push(`/notices/${a.id}`);
+                // router.push(`/reservations/${reservation.id}`);
               }}
             >
-              <Text style={styles.cardButtonText}>Ver Aviso</Text>
+              <Text style={styles.cardButtonText}>
+                Ver Reserva
+              </Text>
             </TouchableOpacity>
           </View>
         ))}
 
         {filtered.length === 0 && (
           <View style={styles.emptyBox}>
-            <Text>Nenhum aviso encontrado.</Text>
+            <Text>
+              Nenhuma reserva encontrada.
+            </Text>
           </View>
         )}
       </View>
-
-      <TouchableOpacity
-        style={styles.bellFab}
-        onPress={() => {
-          alert("Funcionalidade em desenvolvimento...");
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.bellIcon}>🔔</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }

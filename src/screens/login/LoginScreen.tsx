@@ -158,7 +158,7 @@ const LoginScreen: React.FC = () => {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator />
+              <ActivityIndicator /> // Criar componente com esse loading
             ) : (
               <Text style={styles.buttonText}>Entrar</Text>
             )}
