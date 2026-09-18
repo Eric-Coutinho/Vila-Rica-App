@@ -1,10 +1,10 @@
-import { Stack, useRouter } from "expo-router";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFonts } from "expo-font";
-import { Alert, Pressable } from "react-native";
 import { Inter_400Regular } from "@expo-google-fonts/inter";
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFonts } from "expo-font";
+import { Stack, useRouter } from "expo-router";
+import { Alert, Pressable } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -16,39 +16,36 @@ export default function RootLayout() {
   }
 
   function LogoutButton() {
-  const router = useRouter();
+    const router = useRouter();
 
-  const handleLogout = async () => {
-    const confirmLogout = () => {
-      AsyncStorage.removeItem("user")
-        .then(() => {
-          if (typeof localStorage !== "undefined") {
-            try {
-              localStorage.removeItem("user");
-            } catch (err) {
-              console.warn("Erro ao limpar localStorage:", err);
+    const handleLogout = async () => {
+      const confirmLogout = () => {
+        AsyncStorage.removeItem("user")
+          .then(() => {
+            if (typeof localStorage !== "undefined") {
+              try {
+                localStorage.removeItem("user");
+              } catch (err) {
+                console.warn("Erro ao limpar localStorage:", err);
+              }
             }
-          }
 
-          router.replace("/");
-        })
-        .catch((err) => {
-          console.error("Erro ao fazer logout:", err);
-        });
-    };
+            router.replace("/");
+          })
+          .catch((err) => {
+            console.error("Erro ao fazer logout:", err);
+          });
+      };
 
-    if (typeof window !== "undefined") {
-      const confirmed = window.confirm("Deseja realmente sair?");
-      if (confirmed) {
-        confirmLogout();
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm("Deseja realmente sair?");
+        if (confirmed) {
+          confirmLogout();
+        }
+        return;
       }
-      return;
-    }
 
-    Alert.alert(
-      "Sair",
-      "Deseja realmente sair?",
-      [
+      Alert.alert("Sair", "Deseja realmente sair?", [
         {
           text: "Cancelar",
           style: "cancel",
@@ -58,27 +55,22 @@ export default function RootLayout() {
           style: "destructive",
           onPress: confirmLogout,
         },
-      ]
-    );
-  };
+      ]);
+    };
 
-  return (
-    <Pressable
-      onPress={handleLogout}
-      style={{
-        marginRight: 16,
-        padding: 6,
-      }}
-      accessibilityLabel="Sair"
-    >
-      <MaterialIcons
-        name="logout"
-        size={27}
-        color="white"
-      />
-    </Pressable>
-  );
-}
+    return (
+      <Pressable
+        onPress={handleLogout}
+        style={{
+          marginRight: 16,
+          padding: 6,
+        }}
+        accessibilityLabel="Sair"
+      >
+        <MaterialIcons name="logout" size={27} color="white" />
+      </Pressable>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -247,6 +239,18 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="party-saloon"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="create-party-saloon-reservation"
           options={{
             title: "Vila Rica Residencial",
             headerTitleStyle: {

@@ -276,7 +276,7 @@ export default function PartySaloonScreen() {
         style={styles.newNoticeButton}
         activeOpacity={0.85}
         onPress={() => {
-          // router.push("/create-party-saloon");
+          router.push("/create-party-saloon-reservation");
         }}
       >
         <Text style={styles.newNoticeButtonText}>Nova Reserva</Text>
