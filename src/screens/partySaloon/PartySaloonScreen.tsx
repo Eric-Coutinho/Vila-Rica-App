@@ -417,7 +417,12 @@ export default function PartySaloonScreen() {
             <TouchableOpacity
               style={styles.cardButton}
               onPress={() => {
-                // router.push(`/reservations/${reservation.id}`);
+                router.push({
+                  pathname: "/party-saloon/[id]",
+                  params: {
+                    id: reservation.id,
+                  },
+                });
               }}
             >
               <Text style={styles.cardButtonText}>Ver Reserva</Text>
