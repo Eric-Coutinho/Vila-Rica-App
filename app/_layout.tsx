@@ -273,6 +273,18 @@ export default function RootLayout() {
             },
           }}
         />
+        <Stack.Screen
+          name="chatbot"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
