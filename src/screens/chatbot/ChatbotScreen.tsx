@@ -347,10 +347,6 @@ export default function ChatbotScreen() {
         contentContainerStyle={[
           styles.residentPage,
           {
-            /*
-             * Impede que o conteúdo superior fique escondido
-             * atrás do chat fixo.
-             */
             paddingBottom: windowHeight * 0.5 + 45,
           },
         ]}
@@ -373,10 +369,6 @@ export default function ChatbotScreen() {
           style={[
             styles.chatContainer,
             {
-              /*
-               * O componente cresce conforme as mensagens chegam,
-               * mas nunca ultrapassa metade da tela.
-               */
               maxHeight: windowHeight * 0.7,
             },
           ]}
@@ -415,9 +407,6 @@ export default function ChatbotScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator
               onContentSizeChange={() => {
-                /*
-                 * Mantém a mensagem mais recente visível.
-                 */
                 messagesScrollRef.current?.scrollToEnd({
                   animated: true,
                 });
