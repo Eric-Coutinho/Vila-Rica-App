@@ -386,6 +386,8 @@ export default function ResidentDetailScreen() {
       setIsEditing(false);
 
       alert("Sucesso, os dados do morador foram atualizados com sucesso.");
+      setShowUpdateModal(false);
+      router.push('/residents');
     } catch (error: any) {
       console.error("Erro ao atualizar morador:", error);
 
