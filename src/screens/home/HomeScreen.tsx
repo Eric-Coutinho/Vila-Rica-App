@@ -20,6 +20,7 @@ const QUICK_BUTTONS_MORADORES: Record<string, string> = {
   "/deliveries": "Encomendas",
   "/moving": "Mudanças",
   "/contact-manager": "Falar com Síndico",
+  "/chatbot": "Chatbot",
 };
 
 const QUICK_BUTTONS_FUNCIONARIOS: Record<string, string> = {

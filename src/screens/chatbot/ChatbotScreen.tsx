@@ -369,7 +369,7 @@ export default function ChatbotScreen() {
           style={[
             styles.chatContainer,
             {
-              maxHeight: windowHeight * 0.7,
+              maxHeight: windowHeight * 0.6,
             },
           ]}
         >
