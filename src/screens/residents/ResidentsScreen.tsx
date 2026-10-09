@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { styles } from "./styles";
+import { apiFetch, getErrorMessage } from "../../services/api";
 
 type Morador = {
   _id: string;
@@ -35,8 +35,6 @@ type UsersResponse = {
   };
 };
 
-const API_BASE = "http://localhost:3000/api";
-
 export default function ResidentsScreen() {
   const router = useRouter();
 
@@ -51,51 +49,26 @@ export default function ResidentsScreen() {
     try {
       setLoading(true);
 
-      const storedUser = await AsyncStorage.getItem("user");
-
-      if (!storedUser) {
-        throw new Error(
-          "Usuário não encontrado no armazenamento local."
-        );
-      }
-
-      const loggedUser = JSON.parse(storedUser);
-
-      if (!loggedUser?._id) {
-        throw new Error(
-          "ID do usuário logado não encontrado."
-        );
-      }
-
-      const response = await fetch(`${API_BASE}/auth/list-users`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": loggedUser._id,
+      const response = await apiFetch(
+        "/auth/list-users",
+        {
+          method: "GET",
         },
-      });
+        true,
+      );
 
       const data: UsersResponse = await response.json();
 
       if (!response.ok || !data.ok) {
         throw new Error(
-          data.message ||
-            "Não foi possível carregar os moradores."
+          data.message || "Não foi possível carregar os moradores.",
         );
       }
 
       setMoradores(data.users ?? []);
-    } catch (error: any) {
-      console.error(
-        "Erro ao carregar moradores:",
-        error
-      );
-
+    } catch (error) {
       alert(
-        `Erro: ${
-          error?.message ||
-          "Não foi possível carregar a lista de moradores."
-        }`
+        `Erro: ${getErrorMessage(error, "Não foi possível carregar a lista de moradores.")}`,
       );
     } finally {
       setLoading(false);
@@ -103,17 +76,15 @@ export default function ResidentsScreen() {
   }, []);
 
   useFocusEffect(
-  React.useCallback(() => {
-    carregarMoradores();
-  }, [carregarMoradores])
-);
+    React.useCallback(() => {
+      carregarMoradores();
+    }, [carregarMoradores]),
+  );
 
   const blocos = useMemo(() => {
     const values = moradores
       .map((morador) => morador.bloco?.trim())
-      .filter(
-        (bloco): bloco is string => Boolean(bloco)
-      );
+      .filter((bloco): bloco is string => Boolean(bloco));
 
     return Array.from(new Set(values)).sort();
   }, [moradores]);
@@ -121,17 +92,10 @@ export default function ResidentsScreen() {
   const apartamentos = useMemo(() => {
     const values = moradores
       .filter(
-        (morador) =>
-          filtroBloco === "Bloco" ||
-          morador.bloco === filtroBloco
+        (morador) => filtroBloco === "Bloco" || morador.bloco === filtroBloco,
       )
-      .map((morador) =>
-        morador.apartamento?.trim()
-      )
-      .filter(
-        (apartamento): apartamento is string =>
-          Boolean(apartamento)
-      );
+      .map((morador) => morador.apartamento?.trim())
+      .filter((apartamento): apartamento is string => Boolean(apartamento));
 
     return Array.from(new Set(values)).sort();
   }, [moradores, filtroBloco]);
@@ -143,17 +107,11 @@ export default function ResidentsScreen() {
 
     const byName =
       filtroNome.trim() === "" ||
-      nome
-        .toLowerCase()
-        .includes(filtroNome.toLowerCase());
+      nome.toLowerCase().includes(filtroNome.toLowerCase());
 
-    const byBloco =
-      filtroBloco === "Bloco" ||
-      bloco === filtroBloco;
+    const byBloco = filtroBloco === "Bloco" || bloco === filtroBloco;
 
-    const byApto =
-      filtroApto === "Apartamento" ||
-      apartamento === filtroApto;
+    const byApto = filtroApto === "Apartamento" || apartamento === filtroApto;
 
     return byName && byBloco && byApto;
   });
@@ -162,8 +120,7 @@ export default function ResidentsScreen() {
     if (!value) return "-";
 
     if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
-      const [year, month, day] =
-        value.substring(0, 10).split("-");
+      const [year, month, day] = value.substring(0, 10).split("-");
 
       return `${day}/${month}/${year}`;
     }
@@ -177,18 +134,12 @@ export default function ResidentsScreen() {
       return;
     }
 
-    const currentIndex =
-      blocos.indexOf(filtroBloco);
+    const currentIndex = blocos.indexOf(filtroBloco);
 
-    if (
-      currentIndex === -1 ||
-      currentIndex >= blocos.length - 1
-    ) {
+    if (currentIndex === -1 || currentIndex >= blocos.length - 1) {
       setFiltroBloco("Bloco");
     } else {
-      setFiltroBloco(
-        blocos[currentIndex + 1]
-      );
+      setFiltroBloco(blocos[currentIndex + 1]);
     }
 
     setFiltroApto("Apartamento");
@@ -200,27 +151,19 @@ export default function ResidentsScreen() {
       return;
     }
 
-    const currentIndex =
-      apartamentos.indexOf(filtroApto);
+    const currentIndex = apartamentos.indexOf(filtroApto);
 
-    if (
-      currentIndex === -1 ||
-      currentIndex >= apartamentos.length - 1
-    ) {
+    if (currentIndex === -1 || currentIndex >= apartamentos.length - 1) {
       setFiltroApto("Apartamento");
     } else {
-      setFiltroApto(
-        apartamentos[currentIndex + 1]
-      );
+      setFiltroApto(apartamentos[currentIndex + 1]);
     }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          Moradores
-        </Text>
+        <Text style={styles.headerTitle}>Moradores</Text>
       </View>
 
       <TouchableOpacity
@@ -230,47 +173,35 @@ export default function ResidentsScreen() {
         }}
         activeOpacity={0.85}
       >
-        <Text style={styles.registerButtonText}>
-          Cadastrar Morador
-        </Text>
+        <Text style={styles.registerButtonText}>Cadastrar Morador</Text>
       </TouchableOpacity>
 
       <View style={styles.filtersRow}>
         <View style={styles.selectBox}>
-          <Text style={styles.selectLabel}>
-            Bloco
-          </Text>
+          <Text style={styles.selectLabel}>Bloco</Text>
 
           <TouchableOpacity
             style={styles.selectTouchable}
             onPress={toggleBloco}
           >
-            <Text style={styles.selectText}>
-              {filtroBloco}
-            </Text>
+            <Text style={styles.selectText}>{filtroBloco}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.selectBox}>
-          <Text style={styles.selectLabel}>
-            Apartamento
-          </Text>
+          <Text style={styles.selectLabel}>Apartamento</Text>
 
           <TouchableOpacity
             style={styles.selectTouchable}
             onPress={toggleApartamento}
           >
-            <Text style={styles.selectText}>
-              {filtroApto}
-            </Text>
+            <Text style={styles.selectText}>{filtroApto}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={{ marginTop: 8 }}>
-        <Text style={styles.selectLabel}>
-          Nome
-        </Text>
+        <Text style={styles.selectLabel}>Nome</Text>
 
         <TextInput
           placeholder="Nome..."
@@ -285,63 +216,44 @@ export default function ResidentsScreen() {
           <View style={styles.emptyBox}>
             <ActivityIndicator size="large" />
 
-            <Text style={{ marginTop: 12 }}>
-              Carregando moradores...
-            </Text>
+            <Text style={{ marginTop: 12 }}>Carregando moradores...</Text>
           </View>
         ) : (
           <>
             {filtered.map((m) => (
-              <View
-                key={m._id}
-                style={styles.moradorCard}
-              >
+              <View key={m._id} style={styles.moradorCard}>
                 <Text style={styles.cardTitle}>
-                  {m.name ??
-                    "Nome não informado"}
+                  {m.name ?? "Nome não informado"}
                 </Text>
 
                 <Text style={styles.cardSmall}>
-                  Bloco: {m.bloco ??
-                    "Bloco não informado"}{" "}
+                  Bloco: {m.bloco ?? "Bloco não informado"}{" "}
                 </Text>
 
                 <Text style={styles.cardSmall}>
-                  Apartamento: {m.apartamento ??
-                    "Apartamento não informado"}
+                  Apartamento: {m.apartamento ?? "Apartamento não informado"}
                 </Text>
 
-                <Text style={styles.cardSmall}>
-                  CPF: {m.cpf ?? "-"}
-                </Text>
+                <Text style={styles.cardSmall}>CPF: {m.cpf ?? "-"}</Text>
 
                 <Text style={styles.cardSmall}>
-                  Data de Nascimento:{" "}
-                  {formatDate(m.birthDate)}
+                  Data de Nascimento: {formatDate(m.birthDate)}
                 </Text>
 
                 <TouchableOpacity
                   style={styles.cardButton}
                   onPress={() => {
-                    router.push(
-                      `/residents/${m._id}`
-                    );
+                    router.push(`/residents/${m._id}`);
                   }}
                 >
-                  <Text
-                    style={styles.cardButtonText}
-                  >
-                    Ver Informações
-                  </Text>
+                  <Text style={styles.cardButtonText}>Ver Informações</Text>
                 </TouchableOpacity>
               </View>
             ))}
 
             {filtered.length === 0 && (
               <View style={styles.emptyBox}>
-                <Text>
-                  Nenhum morador encontrado.
-                </Text>
+                <Text>Nenhum morador encontrado.</Text>
               </View>
             )}
           </>

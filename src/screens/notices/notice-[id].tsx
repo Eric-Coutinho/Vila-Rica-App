@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -8,12 +7,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import { styles } from "./notice-idStyle";
-
-const API_BASE = "http://localhost:3000/api";
+import { apiFetch } from "@/src/services/api";
+import { getStoredUser } from "@/src/services/session";
 
 type CommentItem = {
   _id: string;
@@ -57,23 +56,15 @@ export default function NoticeDetailScreen() {
     let mounted = true;
     async function init() {
       try {
-        const raw =
-          (await AsyncStorage.getItem("user")) ||
-          (typeof localStorage !== "undefined"
-            ? localStorage.getItem("user")
-            : null);
-        const parsed = raw ? JSON.parse(raw) : null;
-        const uid = parsed?._id || parsed?.id || null;
+        const parsed = await getStoredUser();
+        const uid = parsed?._id || null;
         setUserId(uid);
 
         const role = String(parsed?.role || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
           .toLowerCase();
-        if (mounted)
-          setIsSindico(
-            role === "sindico" || role === "síndico" || role === "admin",
-          );
+        if (mounted) setIsSindico(["sindico", "admin", "adm"].includes(role));
       } catch (err) {
         console.warn("Erro ao ler user:", err);
       } finally {
@@ -92,21 +83,13 @@ export default function NoticeDetailScreen() {
     async function load() {
       setLoading(true);
       try {
-        const raw =
-          (await AsyncStorage.getItem("user")) ||
-          (typeof localStorage !== "undefined"
-            ? localStorage.getItem("user")
-            : null);
-        const parsed = raw ? JSON.parse(raw) : null;
-        const uid = parsed?._id || parsed?.id || null;
-
-        const headers: any = { "Content-Type": "application/json" };
-        if (uid) headers["x-user-id"] = String(uid);
-
-        const resNotice = await fetch(`${API_BASE}/notices/${id}`, {
-          method: "GET",
-          headers,
-        });
+        const resNotice = await apiFetch(
+          `/notices/${id}`,
+          {
+            method: "GET",
+          },
+          true,
+        );
         if (resNotice.ok) {
           const body = await resNotice.json().catch(() => ({}));
           const n = body.notice || body;
@@ -118,10 +101,11 @@ export default function NoticeDetailScreen() {
           console.warn("Erro ao buscar aviso:", resNotice.status);
         }
 
-        const resComments = await fetch(`${API_BASE}/notices/${id}/comments`, {
-          method: "GET",
-          headers,
-        });
+        const resComments = await apiFetch(
+          `/notices/${id}/comments`,
+          { method: "GET" },
+          true,
+        );
         if (resComments.ok) {
           const body = await resComments.json().catch(() => ({}));
           const cs = body.comments || [];
@@ -156,28 +140,19 @@ export default function NoticeDetailScreen() {
     if (!id) return;
     setLoading(true);
     try {
-      const raw =
-        (await AsyncStorage.getItem("user")) ||
-        (typeof localStorage !== "undefined"
-          ? localStorage.getItem("user")
-          : null);
-      const parsed = raw ? JSON.parse(raw) : null;
-      const uid = parsed?._id || parsed?.id || null;
-
-      const headers: any = { "Content-Type": "application/json" };
-      if (uid) headers["x-user-id"] = String(uid);
-
-      const res = await fetch(`${API_BASE}/notices/${id}/comments`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ text: newComment.trim() }),
-      });
+      const res = await apiFetch(
+        `/notices/${id}/comments`,
+        {
+          method: "POST",
+          body: JSON.stringify({ text: newComment.trim() }),
+        },
+        true,
+      );
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         alert(`Erro ${body.message || "Falha ao adicionar comentário"}`);
       } else {
-        const body = await res.json().catch(() => ({}));
         await refreshComments();
         setNewComment("");
       }
@@ -192,20 +167,11 @@ export default function NoticeDetailScreen() {
   async function refreshComments() {
     if (!id) return;
     try {
-      const raw =
-        (await AsyncStorage.getItem("user")) ||
-        (typeof localStorage !== "undefined"
-          ? localStorage.getItem("user")
-          : null);
-      const parsed = raw ? JSON.parse(raw) : null;
-      const uid = parsed?._id || parsed?.id || null;
-      const headers: any = { "Content-Type": "application/json" };
-      if (uid) headers["x-user-id"] = String(uid);
-
-      const res = await fetch(`${API_BASE}/notices/${id}/comments`, {
-        method: "GET",
-        headers,
-      });
+      const res = await apiFetch(
+        `/notices/${id}/comments`,
+        { method: "GET" },
+        true,
+      );
       if (res.ok) {
         const body = await res.json().catch(() => ({}));
         setComments(body.comments || []);
@@ -220,23 +186,13 @@ export default function NoticeDetailScreen() {
     if (!text) return;
     if (!id) return;
     try {
-      const raw =
-        (await AsyncStorage.getItem("user")) ||
-        (typeof localStorage !== "undefined"
-          ? localStorage.getItem("user")
-          : null);
-      const parsed = raw ? JSON.parse(raw) : null;
-      const uid = parsed?._id || parsed?.id || null;
-      const headers: any = { "Content-Type": "application/json" };
-      if (uid) headers["x-user-id"] = String(uid);
-
-      const res = await fetch(
-        `${API_BASE}/notices/${id}/comments/${commentId}/reply`,
+      const res = await apiFetch(
+        `/notices/${id}/comments/${commentId}/reply`,
         {
           method: "POST",
-          headers,
           body: JSON.stringify({ text }),
         },
+        true,
       );
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
@@ -260,31 +216,24 @@ export default function NoticeDetailScreen() {
     if (!id) return;
     setSavingStatus(true);
     try {
-      const raw =
-        (await AsyncStorage.getItem("user")) ||
-        (typeof localStorage !== "undefined"
-          ? localStorage.getItem("user")
-          : null);
-      const parsed = raw ? JSON.parse(raw) : null;
-      const uid = parsed?._id || parsed?.id || null;
-      const headers: any = { "Content-Type": "application/json" };
-      if (uid) headers["x-user-id"] = String(uid);
-
-      const res = await fetch(`${API_BASE}/notices/${id}`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({ status: selectedStatus }),
-      });
+      const res = await apiFetch(
+        `/notices/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ status: selectedStatus }),
+        },
+        true,
+      );
 
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
         alert(`Erro ${b.message || "Falha ao atualizar status"}`);
       } else {
-        const body = await res.json().catch(() => ({}));
-        const resNotice = await fetch(`${API_BASE}/notices/${id}`, {
-          method: "GET",
-          headers,
-        });
+        const resNotice = await apiFetch(
+          `/notices/${id}`,
+          { method: "GET" },
+          true,
+        );
         if (resNotice.ok) {
           const nb = await resNotice.json().catch(() => ({}));
           setNotice(nb.notice || nb);

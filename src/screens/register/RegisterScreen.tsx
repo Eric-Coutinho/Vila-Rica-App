@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import { styles } from "./styles";
+import { apiFetch, getErrorMessage } from "../../services/api";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function RegisterScreen() {
   const [relacao, setRelacao] = useState<string | null>(null);
   const [cpf, setCpf] = useState("");
   const [email, setEmail] = useState("");
+  const [senhaInicial, setSenhaInicial] = useState("");
   const [telefone, setTelefone] = useState("");
   const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -30,9 +32,7 @@ export default function RegisterScreen() {
   const blocos = Array.from({ length: 7 }, (_, i) => String(i + 1));
   const aptos = Array.from({ length: 32 }, (_, i) => String(i + 1));
   const relacoes = ["Morador", "Inquilino", "Proprietário"];
-  const tiposAcesso = ["Morador", "Síndico", "Funcionário"];
-
-  const API_BASE = "http://localhost:3000/api";
+  const tiposAcesso = ["Morador", "Síndico", "Admin"];
 
   function onChangeDate(event: any, selected?: Date) {
     setShowDatePicker(Platform.OS === "ios");
@@ -65,35 +65,40 @@ export default function RegisterScreen() {
     if (!relacao) return alert("Erro - Selecione a Relação.");
     if (!birthDate) return alert("Erro - Informe a data de nascimento.");
     if (!tipoAcesso) return alert("Erro - Selecione o tipo de acesso.");
+    if (senhaInicial.length < 8)
+      return alert("Erro - A senha inicial deve ter ao menos 8 caracteres.");
 
     const payload = {
       email,
-      password: "SenhaBase",
+      password: senhaInicial,
       name: nome,
       bloco,
       apartamento,
       relacao,
       cpf,
       telefone,
-      birthDate: formatDate(birthDate),
-      role: tipoAcesso
+      birthDate: birthDate.toISOString().slice(0, 10),
+      role: tipoAcesso,
     };
 
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await apiFetch(
+        "/auth/register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        true,
+      );
 
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 201) {
         // if (data.user) {
-        //   await AsyncStorage.setItem("user", JSON.stringify(data.user));
         // }
         alert("Sucesso - Morador cadastrado.");
-        router.push('/residents');
+        router.push("/residents");
         return;
       }
 
@@ -102,9 +107,10 @@ export default function RegisterScreen() {
       }
 
       alert(`Erro - ${data.message}. Falha ao cadastrar. Tente novamente.`);
-    } catch (err) {
-      console.error("Falha no fetch register:", err);
-      alert("Erro - Não foi possível conectar ao servidor.");
+    } catch (error) {
+      alert(
+        `Erro - ${getErrorMessage(error, "Não foi possível cadastrar o usuário")}`,
+      );
     }
   }
 
@@ -204,6 +210,18 @@ export default function RegisterScreen() {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        <Text style={styles.label}>Senha inicial</Text>
+        <TextInput
+          placeholder="Mínimo de 8 caracteres..."
+          style={styles.input}
+          placeholderTextColor="#9b9b9b"
+          value={senhaInicial}
+          onChangeText={setSenhaInicial}
+          secureTextEntry
+          autoCapitalize="none"
         />
 
         {/* <Text style={styles.label}>Telefone</Text>

@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -13,8 +12,8 @@ import {
 } from "react-native";
 
 import { styles } from "./createNoticeStyles";
-
-const API_BASE = "http://localhost:3000/api";
+import { apiFetch, getErrorMessage } from "../../services/api";
+import { getStoredUser } from "../../services/session";
 
 type Referente = {
   id: string;
@@ -66,7 +65,7 @@ export default function NovoAviso() {
 
   function onChangeDateWeb(
     e: React.ChangeEvent<HTMLInputElement>,
-    setter: (d: Date | null) => void
+    setter: (d: Date | null) => void,
   ) {
     const val = e.target.value;
     if (!val) {
@@ -94,27 +93,17 @@ export default function NovoAviso() {
     let mounted = true;
     async function loadUser() {
       try {
-        let raw: string | null = null;
-        try {
-          raw = await AsyncStorage.getItem("user");
-        } catch (e) {
-          console.warn("Erro - ", e);
-        }
-        if (!raw && typeof localStorage !== "undefined") {
-          raw = localStorage.getItem("user");
-        }
-        if (!raw) {
+        const u = await getStoredUser();
+        if (!u) {
           if (mounted) setIsSindico(false);
           return;
         }
-        const u = JSON.parse(raw);
         const role = String(u?.role || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
           .toLowerCase();
-        if (mounted) setIsSindico(role === "sindico");
-      } catch (err) {
-        console.warn("Erro ao ler user:", err);
+        if (mounted) setIsSindico(["sindico", "admin", "adm"].includes(role));
+      } catch {
         if (mounted) setIsSindico(false);
       } finally {
         if (mounted) setLoadingUser(false);
@@ -128,47 +117,36 @@ export default function NovoAviso() {
 
   useEffect(() => {
     let mounted = true;
-    const userStr = localStorage.getItem("user") || "";
-
     async function fetchResidents() {
       if (fetchedResidents || refType !== "Morador") return;
       setLoadingResidents(true);
       try {
-        const parsed = userStr ? JSON.parse(userStr) : null;
-        const userId = parsed?._id || parsed?.id;
-
-        if (!userId) {
-          console.warn("Nenhum userId encontrado no localStorage");
-          setLoadingResidents(false);
-          return;
-        }
-
-        const res = await fetch(`${API_BASE}/auth/list-users`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': String(userId)
-          }
-        });
+        const res = await apiFetch(
+          "/auth/list-users",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+          true,
+        );
         if (!res.ok) throw new Error("Falha ao buscar moradores");
         const body = await res.json();
-        console.log(body);
-
         if (!mounted) return;
-        const usersArray: any[] = Array.isArray(body) ? body : (body.users || []);
+        const usersArray: any[] = Array.isArray(body) ? body : body.users || [];
 
         const mapped: Resident[] = usersArray.map((u: any) => ({
           _id: u._id,
           name: u.name,
           bloco: u.bloco,
           apartamento: u.apartamento,
-          ...u
+          ...u,
         }));
 
         setResidents(mapped);
         setFetchedResidents(true);
-      } catch (err) {
-        console.warn("Erro ao buscar moradores:", err);
+      } catch {
       } finally {
         if (mounted) setLoadingResidents(false);
       }
@@ -182,7 +160,7 @@ export default function NovoAviso() {
   function addReferente() {
     if (referentes.some((r) => r.type === "Todos")) {
       return alert(
-        "Já existe um referente 'Todos'. Remova-o para adicionar outros referentes."
+        "Já existe um referente 'Todos'. Remova-o para adicionar outros referentes.",
       );
     }
 
@@ -255,11 +233,9 @@ export default function NovoAviso() {
     }
 
     const referentePayload = referentes.map((r) => {
-      if (r.type === "Todos")
-        return { kind: "Todos" };
+      if (r.type === "Todos") return { kind: "Todos" };
 
-      if (r.type === "Bloco")
-        return { kind: "Bloco", refId: String(r.value) };
+      if (r.type === "Bloco") return { kind: "Bloco", refId: String(r.value) };
 
       if (r.type === "Apartamento")
         return { kind: "Apartamento", refId: String(r.value) };
@@ -269,7 +245,6 @@ export default function NovoAviso() {
 
       return { kind: "Todos" };
     });
-
 
     const payload = {
       title: title.trim(),
@@ -281,26 +256,18 @@ export default function NovoAviso() {
       createdAt: new Date().toISOString(),
     };
 
-    console.log("Payload: " + JSON.stringify(payload))
-
     try {
-      const userStr = localStorage.getItem("user") || "";
-      const parsed = userStr ? JSON.parse(userStr) : null;
-      const userId = parsed?._id || parsed?.id;
-
-      if (!userId) {
-        console.warn("Nenhum userId encontrado no localStorage");
-        setLoadingResidents(false);
-        return;
-      }
-      const res = await fetch(`${API_BASE}/notices`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          'x-user-id': String(userId)
+      const res = await apiFetch(
+        "/notices",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+        true,
+      );
       if (res.status === 201 || res.ok) {
         alert("Sucesso - Aviso criado.");
         router.push("/notices");
@@ -308,9 +275,10 @@ export default function NovoAviso() {
       }
       const data = await res.json().catch(() => ({}));
       alert(`Erro ${data.message || "Falha ao criar aviso."}`);
-    } catch (err) {
-      console.error("Erro criar aviso:", err);
-      alert("Erro - Não foi possível conectar ao servidor.");
+    } catch (error) {
+      alert(
+        `Erro - ${getErrorMessage(error, "Não foi possível criar o aviso")}`,
+      );
     }
   }
 
@@ -326,8 +294,8 @@ export default function NovoAviso() {
     const text =
       referentes.length > 0
         ? `Referentes\n${referentes
-          .map((r) => `${r.type}: ${r.value}`)
-          .join("\n")}`
+            .map((r) => `${r.type}: ${r.value}`)
+            .join("\n")}`
         : "Referentes\nNenhum referente adicionado.";
 
     if (Platform.OS === "web") {
@@ -439,7 +407,7 @@ export default function NovoAviso() {
 
         {!hasTodos ? (
           <View style={styles.refRow}>
-            <View >
+            <View>
               <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={refType}
@@ -524,8 +492,9 @@ export default function NovoAviso() {
                             value={null}
                           />
                           {residents.map((u) => {
-                            const label = `${u.name} (${u.bloco ?? "–"}/${u.apartamento ?? "–"
-                              })`;
+                            const label = `${u.name} (${u.bloco ?? "–"}/${
+                              u.apartamento ?? "–"
+                            })`;
                             return (
                               <Picker.Item
                                 key={u._id}

@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -12,14 +11,9 @@ import {
 } from "react-native";
 
 import { styles } from "./party-saloonidStyles";
+import { apiFetch } from "@/src/services/api";
 
-const API_BASE = "http://localhost:3000/api";
-
-type ReservationStatus =
-  | "confirmed"
-  | "waiting"
-  | "canceled"
-  | "closed";
+type ReservationStatus = "confirmed" | "waiting" | "canceled" | "closed";
 
 type Guest = {
   name: string;
@@ -55,12 +49,9 @@ export default function PartySaloonDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
 
-  const reservationId = Array.isArray(params.id)
-    ? params.id[0]
-    : params.id;
+  const reservationId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const [reservation, setReservation] =
-    useState<Reservation | null>(null);
+  const [reservation, setReservation] = useState<Reservation | null>(null);
 
   const [filterName, setFilterName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -90,29 +81,12 @@ export default function PartySaloonDetailScreen() {
           return;
         }
 
-        const rawUser =
-          (await AsyncStorage.getItem("user")) ||
-          (typeof localStorage !== "undefined"
-            ? localStorage.getItem("user")
-            : null);
-
-        const storedUser = rawUser ? JSON.parse(rawUser) : null;
-        const userId = storedUser?._id || storedUser?.id;
-
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-
-        if (userId) {
-          headers["x-user-id"] = String(userId);
-        }
-
-        const response = await fetch(
-          `${API_BASE}/reservation/get-reservation/${reservationId}`,
+        const response = await apiFetch(
+          `/reservation/get-reservation/${reservationId}`,
           {
             method: "GET",
-            headers,
           },
+          true,
         );
 
         const body = await response.json().catch(() => ({}));
@@ -139,8 +113,7 @@ export default function PartySaloonDetailScreen() {
               visible: true,
               title: "Falha ao carregar",
               message:
-                body?.message ||
-                "Não foi possível buscar os dados da reserva.",
+                body?.message || "Não foi possível buscar os dados da reserva.",
             });
           }
 
@@ -270,9 +243,7 @@ export default function PartySaloonDetailScreen() {
                 style={[
                   styles.statusDot,
                   {
-                    backgroundColor: getStatusColor(
-                      reservation.status,
-                    ),
+                    backgroundColor: getStatusColor(reservation.status),
                   },
                 ]}
               />
@@ -335,20 +306,12 @@ export default function PartySaloonDetailScreen() {
 
             <View style={styles.guestsContainer}>
               {filteredGuests.map((guest, index) => (
-                <View
-                  key={`${guest.cpf}-${index}`}
-                  style={styles.guestCard}
-                >
-                  <Text
-                    style={styles.guestName}
-                    numberOfLines={2}
-                  >
+                <View key={`${guest.cpf}-${index}`} style={styles.guestCard}>
+                  <Text style={styles.guestName} numberOfLines={2}>
                     {guest.name}
                   </Text>
 
-                  <Text style={styles.guestInformation}>
-                    {guest.cpf}
-                  </Text>
+                  <Text style={styles.guestInformation}>{guest.cpf}</Text>
 
                   <Text style={styles.guestInformation}>
                     {formatDate(guest.birthDate)}
@@ -372,9 +335,7 @@ export default function PartySaloonDetailScreen() {
         </ScrollView>
       )}
 
-      {!reservation && !loading && (
-        <View style={styles.emptyScreen} />
-      )}
+      {!reservation && !loading && <View style={styles.emptyScreen} />}
 
       <Modal
         transparent
@@ -386,9 +347,7 @@ export default function PartySaloonDetailScreen() {
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" />
 
-            <Text style={styles.loadingText}>
-              Buscando reserva...
-            </Text>
+            <Text style={styles.loadingText}>Buscando reserva...</Text>
           </View>
         </View>
       </Modal>
@@ -402,13 +361,9 @@ export default function PartySaloonDetailScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>
-              {errorModal.title}
-            </Text>
+            <Text style={styles.modalTitle}>{errorModal.title}</Text>
 
-            <Text style={styles.modalMessage}>
-              {errorModal.message}
-            </Text>
+            <Text style={styles.modalMessage}>{errorModal.message}</Text>
 
             <TouchableOpacity
               style={styles.modalButton}

@@ -1,5 +1,5 @@
-import { useRouter, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,18 +8,42 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { styles } from "./styles";
+import { apiFetch, getErrorMessage } from "../../services/api";
+import {
+  clearRecoveryChallenge,
+  getRecoveryChallenge,
+} from "../../services/session";
 
 const RedefineScreen: React.FC = () => {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const emailParam = (params?.email as string) || undefined;
-  const codeParam = (params?.code as string) || undefined;
+  const [challenge, setChallenge] = useState<{
+    email: string;
+    code: string;
+  } | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
   const [senha, setSenha] = useState<string>("");
   const [newSenha, setNewSenha] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
-  const API_BASE = "http://localhost:3000/api";
+  useEffect(() => {
+    let mounted = true;
+    getRecoveryChallenge()
+      .then((stored) => {
+        if (!mounted) return;
+        if (!stored) {
+          router.replace("/recover");
+          return;
+        }
+        setChallenge(stored);
+      })
+      .finally(() => {
+        if (mounted) setInitializing(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
   const handleRedefine = async () => {
     if (!senha || !newSenha) {
@@ -30,24 +54,26 @@ const RedefineScreen: React.FC = () => {
       alert("Erro - As senhas não coincidem.");
       return;
     }
-    if (!emailParam || !codeParam) {
-      alert("Erro - Email ou código ausente. Volte para a recuperação e solicite um novo código.");
+    if (!challenge) {
+      alert(
+        "Erro - Email ou código ausente. Volte para a recuperação e solicite um novo código.",
+      );
       router.push("/recover");
       return;
     }
-    if (senha.length < 6) {
-      alert("Erro - A senha deve ter ao menos 6 caracteres.");
+    if (senha.length < 8) {
+      alert("Erro - A senha deve ter ao menos 8 caracteres.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/reset`, {
+      const res = await apiFetch("/auth/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: emailParam.trim(),
-          code: codeParam.trim(),
+          email: challenge.email,
+          code: challenge.code,
           newPassword: senha,
         }),
       });
@@ -56,9 +82,7 @@ const RedefineScreen: React.FC = () => {
       let data: any = null;
       try {
         data = raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        console.warn("parse /reset response error", e);
-      }
+      } catch {}
 
       if (!data) {
         alert("Erro - Resposta inválida do servidor: " + raw);
@@ -70,19 +94,28 @@ const RedefineScreen: React.FC = () => {
         return;
       }
 
+      await clearRecoveryChallenge();
       alert(`Sucesso - ${data.message ?? "Senha redefinida com sucesso"}`);
-      router.push("/login");
-    } catch (err: any) {
-      console.error("/reset error:", err);
-      alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
+      router.replace("/login");
+    } catch (error) {
+      alert(`Erro - ${getErrorMessage(error, "Falha ao redefinir senha")}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    router.push("/");
+  const handleCancel = async () => {
+    await clearRecoveryChallenge();
+    router.replace("/");
   };
+
+  if (initializing) {
+    return (
+      <View style={styles.page}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.page}>

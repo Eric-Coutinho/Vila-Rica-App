@@ -1,5 +1,4 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -13,8 +12,8 @@ import {
 } from "react-native";
 
 import { styles } from "./PartySaloonScreenStyles";
-
-const API_BASE = "http://localhost:3000/api";
+import { apiFetch } from "@/src/services/api";
+import { getStoredUser } from "@/src/services/session";
 
 type Reservation = {
   id: string;
@@ -56,13 +55,7 @@ export default function PartySaloonScreen() {
 
     async function loadUserRole() {
       try {
-        const raw =
-          (await AsyncStorage.getItem("user")) ||
-          (typeof localStorage !== "undefined"
-            ? localStorage.getItem("user")
-            : null);
-
-        const userObj = raw ? JSON.parse(raw) : null;
+        const userObj = await getStoredUser();
 
         if (!mounted) return;
 
@@ -72,7 +65,7 @@ export default function PartySaloonScreen() {
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
 
-          setIsSindico(role === "sindico" || role === "admin");
+          setIsSindico(["sindico", "admin", "adm"].includes(role));
         } else {
           setIsSindico(false);
         }
@@ -99,32 +92,13 @@ export default function PartySaloonScreen() {
       setLoading(true);
 
       try {
-        const raw =
-          (await AsyncStorage.getItem("user")) ||
-          (typeof localStorage !== "undefined"
-            ? localStorage.getItem("user")
-            : null);
-
-        const parsed = raw ? JSON.parse(raw) : null;
-        const userId = parsed?._id || parsed?.id;
-
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-
-        if (userId) {
-          headers["x-user-id"] = String(userId);
-        }
-
-        const res = await fetch(
-          `${API_BASE}/reservation/list-reservations/party_saloon`,
+        const res = await apiFetch(
+          "/reservation/list-reservations/party_saloon",
           {
             method: "GET",
-            headers,
           },
+          true,
         );
-
-        console.log("Resposta da API:", res);
 
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
@@ -138,8 +112,6 @@ export default function PartySaloonScreen() {
         }
 
         const body = await res.json().catch(() => ({}));
-
-        console.log("Body das reservas:", body);
 
         const reservationsArray: any[] = Array.isArray(body)
           ? body

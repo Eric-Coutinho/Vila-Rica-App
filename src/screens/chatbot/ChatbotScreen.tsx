@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,6 +16,7 @@ import {
 } from "react-native";
 
 import { styles } from "./ChatbotStyles";
+import { getStoredUser } from "@/src/services/session";
 
 type MessageAuthor = "user" | "bot";
 
@@ -95,13 +95,7 @@ export default function ChatbotScreen() {
 
     async function loadUserRole() {
       try {
-        const rawUser =
-          (await AsyncStorage.getItem("user")) ||
-          (typeof localStorage !== "undefined"
-            ? localStorage.getItem("user")
-            : null);
-
-        const user = rawUser ? JSON.parse(rawUser) : null;
+        const user = await getStoredUser();
 
         const normalizedRole = String(user?.role || "Morador")
           .normalize("NFD")

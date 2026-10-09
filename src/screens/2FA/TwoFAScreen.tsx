@@ -1,6 +1,5 @@
-import React, { useRef, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   NativeSyntheticEvent,
@@ -12,168 +11,151 @@ import {
   View,
 } from "react-native";
 
+import { apiFetch, getErrorMessage } from "../../services/api";
+import {
+  clearTwoFactorEmail,
+  getTwoFactorEmail,
+  saveSession,
+} from "../../services/session";
+import type { VerifyTwoFactorResponse } from "../../types/api";
 import { styles } from "./styles";
 
 const LENGTH = 6;
-const API_BASE = "http://localhost:3000/api";
 
 const TwoFAScreen: React.FC = () => {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const email = (params?.email as string) || "";
-
+  const [email, setEmail] = useState("");
+  const [initializing, setInitializing] = useState(true);
   const [code, setCode] = useState<string[]>(Array(LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
   const inputsRef = useRef<Array<TextInput | null>>(Array(LENGTH).fill(null));
 
-  const handleChange = (text: string, idx: number) => {
-    const clean = text.replace(/\s+/g, "");
+  useEffect(() => {
+    let mounted = true;
+    getTwoFactorEmail()
+      .then((pending) => {
+        if (!mounted) return;
+        if (!pending?.email) {
+          router.replace("/login");
+          return;
+        }
+        setEmail(pending.email);
+      })
+      .finally(() => {
+        if (mounted) setInitializing(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
+  const handleChange = (text: string, index: number) => {
+    const clean = text.replace(/\s+/g, "").slice(0, LENGTH - index);
+    const next = [...code];
 
     if (clean.length > 1) {
-      const chars = clean.split("").slice(0, LENGTH - idx);
-      const newCode = [...code];
-
-      for (let i = 0; i < chars.length; i++) {
-        newCode[idx + i] = chars[i];
-      }
-
-      setCode(newCode);
-
-      const nextIndex = Math.min(idx + chars.length, LENGTH - 1);
-      inputsRef.current[nextIndex]?.focus();
+      [...clean].forEach((character, offset) => {
+        next[index + offset] = character;
+      });
+      setCode(next);
+      inputsRef.current[Math.min(index + clean.length, LENGTH - 1)]?.focus();
       return;
     }
 
-    const newCode = [...code];
-    newCode[idx] = clean.slice(0, 1);
-    setCode(newCode);
-
-    if (clean && idx < LENGTH - 1) {
-      inputsRef.current[idx + 1]?.focus();
-    }
+    next[index] = clean;
+    setCode(next);
+    if (clean && index < LENGTH - 1) inputsRef.current[index + 1]?.focus();
   };
 
   const handleKeyPress = (
-    e: NativeSyntheticEvent<TextInputKeyPressEventData>,
-    idx: number
+    event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    index: number,
   ) => {
-    if (e.nativeEvent.key !== "Backspace") {
-      return;
-    }
-
-    const newCode = [...code];
-
-    if (code[idx] === "" && idx > 0) {
-      newCode[idx - 1] = "";
-      setCode(newCode);
-      inputsRef.current[idx - 1]?.focus();
-      return;
-    }
-
-    newCode[idx] = "";
-    setCode(newCode);
+    if (event.nativeEvent.key !== "Backspace") return;
+    if (!code[index] && index > 0) inputsRef.current[index - 1]?.focus();
   };
 
   const handleVerify = async () => {
-    const joined = code.join("");
-
-    if (!email.trim()) {
-      alert("Erro - Email não informado. Volte para o login.");
+    const joinedCode = code.join("");
+    if (!email) {
       router.replace("/login");
       return;
     }
-
-    if (joined.length !== LENGTH) {
-      alert(`Erro - Preencha o código de ${LENGTH} dígitos.`);
+    if (joinedCode.length !== LENGTH) {
+      alert(`Erro - Preencha o código de ${LENGTH} caracteres.`);
       return;
     }
 
     try {
       setLoading(true);
-
-      const res = await fetch(`${API_BASE}/auth/verify-2fa`, {
+      const response = await apiFetch("/auth/verify-2fa", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          code: joined,
-        }),
+        body: JSON.stringify({ email, code: joinedCode }),
       });
+      const data = (await response.json()) as VerifyTwoFactorResponse & {
+        ok?: boolean;
+        message?: string;
+      };
 
-      const raw = await res.text();
-
-      let data: any = null;
-
-      try {
-        data = raw ? JSON.parse(raw) : null;
-      } catch (parseErr) {
-        console.warn("2FA erro ao parsear JSON:", parseErr);
-      }
-
-      if (!data) {
-        alert(`Erro - Resposta inválida do servidor: ${raw || "vazia"}`);
+      if (!response.ok || !data.ok || !data.accessToken || !data.user) {
+        alert(`Erro - ${data.message || "Código inválido ou expirado"}`);
         return;
       }
 
-      if (!data.ok) {
-        alert(`Erro - ${data.message ?? "Código inválido"}`);
-        return;
-      }
-
-      if (data.user) {
-        await AsyncStorage.setItem("user", JSON.stringify(data.user));
-      }
-
-    alert(`Sucesso - Bem-vindo, ${ data.user?.name ?? data.user?.email ?? "" }`);
-
-      router.replace({
-        pathname: "/home",
-        params: { name: data.user?.name ?? "" },
-      });
-    } catch (err: any) {
-      console.error("2FA verify error:", err);
-      alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
+      await saveSession(data.accessToken, data.user);
+      await clearTwoFactorEmail();
+      alert(`Sucesso - Bem-vindo, ${data.user.name || data.user.email}`);
+      router.replace("/home");
+    } catch (error) {
+      alert(`Erro - ${getErrorMessage(error, "Falha ao validar o código")}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    setCode(Array(LENGTH).fill(""));
+  const handleCancel = async () => {
+    await clearTwoFactorEmail();
     router.replace("/login");
   };
+
+  if (initializing) {
+    return (
+      <View style={styles.page}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.page}>
       <View style={styles.container}>
         <Text style={styles.title}>Autenticação em duas etapas</Text>
-
         <Text style={styles.subtitle}>
-          Enviamos um código de 6 dígitos para o email{" "}
-          <Text style={styles.email}>{email || "informado no login"}</Text>.
-          Digite o código abaixo para continuar.
+          Enviamos um código de 6 caracteres para o email{" "}
+          <Text style={styles.email}>{email}</Text>. Digite o código abaixo.
         </Text>
 
         <View style={styles.codeRow}>
-          {code.map((digit, idx) => (
+          {code.map((character, index) => (
             <TextInput
-              key={idx}
-              ref={(el) => {
-                inputsRef.current[idx] = el;
+              key={index}
+              ref={(element) => {
+                inputsRef.current[index] = element;
               }}
-              value={digit}
-              onChangeText={(text) => handleChange(text, idx)}
-              onKeyPress={(event) => handleKeyPress(event, idx)}
+              value={character}
+              onChangeText={(text) => handleChange(text, index)}
+              onKeyPress={(event) => handleKeyPress(event, index)}
               style={styles.codeInput}
-              keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+              keyboardType="default"
+              autoCapitalize="characters"
+              autoCorrect={false}
               maxLength={1}
               returnKeyType="done"
               textContentType={
-                Platform.OS === "ios" ? ("oneTimeCode" as any) : undefined
+                Platform.OS === "ios" ? "oneTimeCode" : undefined
               }
-              autoFocus={idx === 0}
-              accessible
-              accessibilityLabel={`Código 2FA ${idx + 1}`}
+              autoFocus={index === 0}
+              accessibilityLabel={`Código 2FA ${index + 1}`}
             />
           ))}
         </View>

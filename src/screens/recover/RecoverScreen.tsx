@@ -1,24 +1,19 @@
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
-import {
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { styles } from "./styles";
+import { apiFetch, getErrorMessage } from "../../services/api";
+import { saveRecoveryEmail } from "../../services/session";
 
 type RecoverResponse =
-  | { ok: true; message?: string; code?: string }
+  | { ok: true; message?: string }
   | { ok: false; message?: string };
 
 const RecoverScreen: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
-
-  const API_BASE = "http://localhost:3000/api";
 
   const handleContinue = async () => {
     if (!email.trim()) {
@@ -28,25 +23,19 @@ const RecoverScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log("Recover POST", `${API_BASE}/auth/recover`, {
-        email: email.trim(),
-      });
-
-      const res = await fetch(`${API_BASE}/auth/recover`, {
+      const normalizedEmail = email.trim().toLowerCase();
+      const res = await apiFetch("/auth/recover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
       const raw = await res.text();
-      console.log("Recover status:", res.status, "raw:", raw);
 
       let data: RecoverResponse | null = null;
       try {
         data = raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        console.warn("Recover parse error", e);
-      }
+      } catch {}
 
       if (!data) {
         alert("Resposta inválida do servidor: " + raw);
@@ -58,18 +47,11 @@ const RecoverScreen: React.FC = () => {
         return;
       }
 
-      if ("code" in data && data.code) {
-        alert(
-          `Código gerado: ${data.code} (apenas dev). Verifique seu email em produção.`
-        );
-      } else {
-        alert(data.message ?? "Código enviado por email");
-      }
-
-      router.push({ pathname: "/code", params: { email: email.trim() } });
-    } catch (err: any) {
-      console.error("[Recover] error:", err);
-      alert("Erro de conexão: " + (err?.message ?? String(err)));
+      await saveRecoveryEmail(normalizedEmail);
+      alert(data.message ?? "Se o email existir, o código será enviado.");
+      router.push("/code");
+    } catch (error) {
+      alert(getErrorMessage(error, "Falha ao iniciar a recuperação"));
     } finally {
       setLoading(false);
     }

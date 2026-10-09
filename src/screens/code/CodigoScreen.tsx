@@ -1,17 +1,22 @@
-import { useRouter, useLocalSearchParams  } from "expo-router";
-import React, { useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  NativeSyntheticEvent,
+  Platform,
   Text,
   TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  NativeSyntheticEvent,
   TextInputKeyPressEventData,
-  ActivityIndicator,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
+import { apiFetch, getErrorMessage } from "../../services/api";
+import {
+  clearRecoveryEmail,
+  getRecoveryEmail,
+  saveRecoveryChallenge,
+} from "../../services/session";
 import { styles } from "./styles";
 
 interface CodigoScreenProps {
@@ -26,119 +31,109 @@ export default function CodigoScreen({
   onCancel,
 }: CodigoScreenProps) {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const emailParam = (params?.email as string) || undefined;
-
-  const LENGTH = length;
-  const [code, setCode] = useState<string[]>(Array(LENGTH).fill(""));
-  const inputsRef = useRef<Array<TextInput | null>>(Array(LENGTH).fill(null));
+  const [email, setEmail] = useState("");
+  const [initializing, setInitializing] = useState(true);
+  const [code, setCode] = useState<string[]>(Array(length).fill(""));
+  const inputsRef = useRef<Array<TextInput | null>>(Array(length).fill(null));
   const [loading, setLoading] = useState(false);
 
-  const API_BASE = "http://localhost:3000/api";
+  useEffect(() => {
+    let mounted = true;
+    getRecoveryEmail()
+      .then((pending) => {
+        if (!mounted) return;
+        if (!pending?.email) {
+          router.replace("/recover");
+          return;
+        }
+        setEmail(pending.email);
+      })
+      .finally(() => {
+        if (mounted) setInitializing(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
-  const handleChange = (text: string, idx: number) => {
-    const clean = text.replace(/\s+/g, "");
+  const handleChange = (text: string, index: number) => {
+    const clean = text.replace(/\s+/g, "").slice(0, length - index);
+    const next = [...code];
 
     if (clean.length > 1) {
-      const chars = clean.split("").slice(0, LENGTH - idx);
-      const newCode = [...code];
-      for (let i = 0; i < chars.length; i++) {
-        newCode[idx + i] = chars[i];
-      }
-      setCode(newCode);
-      const nextIndex = Math.min(idx + chars.length, LENGTH - 1);
-      inputsRef.current[nextIndex]?.focus();
+      [...clean].forEach((character, offset) => {
+        next[index + offset] = character;
+      });
+      setCode(next);
+      inputsRef.current[Math.min(index + clean.length, length - 1)]?.focus();
       return;
     }
 
-    const newCode = [...code];
-    newCode[idx] = clean;
-    setCode(newCode);
-
-    if (clean && idx < LENGTH - 1) {
-      inputsRef.current[idx + 1]?.focus();
-    }
+    next[index] = clean;
+    setCode(next);
+    if (clean && index < length - 1) inputsRef.current[index + 1]?.focus();
   };
 
   const handleKeyPress = (
-    e: NativeSyntheticEvent<TextInputKeyPressEventData>,
-    idx: number
+    event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    index: number,
   ) => {
-    if (e.nativeEvent.key === "Backspace") {
-      if (code[idx] === "" && idx > 0) {
-        inputsRef.current[idx - 1]?.focus();
-        const newCode = [...code];
-        newCode[idx - 1] = "";
-        setCode(newCode);
-      } else {
-        const newCode = [...code];
-        newCode[idx] = "";
-        setCode(newCode);
-      }
-    }
+    if (event.nativeEvent.key !== "Backspace") return;
+    if (!code[index] && index > 0) inputsRef.current[index - 1]?.focus();
   };
 
   const handleContinue = async () => {
-    const joined = code.join("");
-    if (joined.length < LENGTH) {
-      alert(`Erro - Preencha o código de ${LENGTH} caracteres.`);
+    const joinedCode = code.join("");
+    if (joinedCode.length !== length) {
+      alert(`Erro - Preencha o código de ${length} caracteres.`);
       return;
     }
-
-    const email = emailParam;
     if (!email) {
-      alert(
-        "Email não fornecido. Volte para a tela de recuperação e informe seu email."
-      );
-      router.push("/recover");
+      router.replace("/recover");
       return;
     }
 
-    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/verify-code`, {
+      setLoading(true);
+      const response = await apiFetch("/auth/verify-code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), code: joined }),
+        body: JSON.stringify({ email, code: joinedCode }),
       });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+      };
 
-      const raw = await res.text();
-      let data: any = null;
-      try {
-        data = raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        console.warn("parse verify-code response error", e);
-      }
-
-      if (!data) {
-        alert("Erro - Resposta inválida do servidor: " + raw);
+      if (!response.ok || !data.ok) {
+        alert(`Erro - ${data.message || "Código inválido ou expirado"}`);
         return;
       }
 
-      if (!data.ok) {
-        alert(`Erro - ${data.message ?? "Código inválido"}`);
-        return;
-      }
-
-      alert(`Sucesso - ${data.message ?? "Código válido"}`);
-      onContinue?.(joined);
-
-      router.push({
-        pathname: "/redefine",
-        params: { email: email.trim(), code: joined },
-      });
-    } catch (err: any) {
-      console.error("verify-code error:", err);
-      alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
+      await saveRecoveryChallenge(email, joinedCode);
+      await clearRecoveryEmail();
+      onContinue?.(joinedCode);
+      alert(`Sucesso - ${data.message || "Código válido"}`);
+      router.push("/redefine");
+    } catch (error) {
+      alert(`Erro - ${getErrorMessage(error, "Falha ao validar o código")}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     onCancel?.();
-    router.push("/");
+    await clearRecoveryEmail();
+    router.replace("/");
   };
+
+  if (initializing) {
+    return (
+      <View style={styles.page}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.page}>
@@ -149,25 +144,26 @@ export default function CodigoScreen({
         </Text>
 
         <View style={styles.codeRow}>
-          {code.map((digit, idx) => (
+          {code.map((character, index) => (
             <TextInput
-              key={idx}
-              ref={(el) => {
-                inputsRef.current[idx] = el;
+              key={index}
+              ref={(element) => {
+                inputsRef.current[index] = element;
               }}
-              value={digit}
-              onChangeText={(t) => handleChange(t, idx)}
-              onKeyPress={(e) => handleKeyPress(e, idx)}
+              value={character}
+              onChangeText={(text) => handleChange(text, index)}
+              onKeyPress={(event) => handleKeyPress(event, index)}
               style={styles.codeInput}
-              keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
+              keyboardType="default"
+              autoCapitalize="characters"
+              autoCorrect={false}
               maxLength={1}
               returnKeyType="done"
               textContentType={
-                Platform.OS === "ios" ? ("oneTimeCode" as any) : undefined
+                Platform.OS === "ios" ? "oneTimeCode" : undefined
               }
-              autoFocus={idx === 0}
-              accessible
-              accessibilityLabel={`Código ${idx + 1}`}
+              autoFocus={index === 0}
+              accessibilityLabel={`Código ${index + 1}`}
             />
           ))}
         </View>

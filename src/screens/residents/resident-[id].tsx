@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -19,8 +18,7 @@ import {
 import ConfirmModal from "../../components/ConfirmModal.tsx";
 
 import { styles } from "./resident-id-styles";
-
-const API_BASE = "http://localhost:3000/api";
+import { apiFetch } from "../../services/api";
 
 type Resident = {
   _id?: string;
@@ -84,7 +82,7 @@ export default function ResidentDetailScreen() {
 
   const relacoes = ["Morador", "Inquilino", "Proprietário"];
 
-  const tiposAcesso = ["Morador", "Síndico", "Funcionário"];
+  const tiposAcesso = ["Morador", "Síndico", "Admin"];
 
   useEffect(() => {
     carregarMorador();
@@ -185,28 +183,13 @@ export default function ResidentDetailScreen() {
 
       setLoading(true);
 
-      const storedUser = await AsyncStorage.getItem("user");
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (storedUser) {
-        try {
-          const loggedUser = JSON.parse(storedUser);
-
-          if (loggedUser?._id) {
-            headers["x-user-id"] = loggedUser._id;
-          }
-        } catch {
-          console.warn("Não foi possível interpretar o usuário armazenado.");
-        }
-      }
-
-      const response = await fetch(`${API_BASE}/auth/users/get/${id}`, {
-        method: "GET",
-        headers,
-      });
+      const response = await apiFetch(
+        `/auth/users/get/${id}`,
+        {
+          method: "GET",
+        },
+        true,
+      );
 
       const data: ApiResponse = await response.json();
 
@@ -302,18 +285,6 @@ export default function ResidentDetailScreen() {
 
     try {
       setUpdating(true);
-      const storedUser = await AsyncStorage.getItem("user");
-
-      if (!storedUser) {
-        throw new Error("Usuário não encontrado no armazenamento local.");
-      }
-
-      const loggedUser = JSON.parse(storedUser);
-
-      if (!loggedUser?._id) {
-        throw new Error("ID do usuário logado não encontrado.");
-      }
-
       const payload = {
         name: name.trim(),
         bloco,
@@ -326,14 +297,17 @@ export default function ResidentDetailScreen() {
         role,
       };
 
-      const response = await fetch(`${API_BASE}/auth/users/update/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": loggedUser._id,
+      const response = await apiFetch(
+        `/auth/users/update/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+        true,
+      );
 
       const data = await response.json().catch(() => ({}));
 
@@ -387,14 +361,14 @@ export default function ResidentDetailScreen() {
 
       alert("Sucesso, os dados do morador foram atualizados com sucesso.");
       setShowUpdateModal(false);
-      router.push('/residents');
+      router.push("/residents");
     } catch (error: any) {
       console.error("Erro ao atualizar morador:", error);
 
-      alert(`Erro, ${error?.message || "Não foi possível atualizar os dados do morador."}`,
+      alert(
+        `Erro, ${error?.message || "Não foi possível atualizar os dados do morador."}`,
       );
-    }
-    finally {
+    } finally {
       setUpdating(false);
     }
   };
@@ -430,25 +404,16 @@ export default function ResidentDetailScreen() {
     try {
       setDeleting(true);
 
-      const storedUser = await AsyncStorage.getItem("user");
-
-      if (!storedUser) {
-        throw new Error("Usuário não encontrado no armazenamento local.");
-      }
-
-      const loggedUser = JSON.parse(storedUser);
-
-      if (!loggedUser?._id) {
-        throw new Error("ID do usuário logado não encontrado.");
-      }
-
-      const response = await fetch(`${API_BASE}/auth/users/delete/${id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": loggedUser._id,
+      const response = await apiFetch(
+        `/auth/users/delete/${id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      });
+        true,
+      );
 
       const data = await response.json();
 
@@ -458,12 +423,12 @@ export default function ResidentDetailScreen() {
 
       setShowDeleteModal(false);
 
-      alert(`Sucesso, ${resident?.name ?? "Morador"} foi excluído com sucesso.`);
+      alert(
+        `Sucesso, ${resident?.name ?? "Morador"} foi excluído com sucesso.`,
+      );
 
       router.back();
-    } catch (error: any) {
-      console.error("Erro ao excluir morador:", error);
-
+    } catch {
       alert("Erro, não foi possível excluir o morador.");
     } finally {
       setDeleting(false);
@@ -491,11 +456,19 @@ export default function ResidentDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{resident?.name || "Morador"} {
-          isEditing ? 
-          <Ionicons name="trash" size={25} color="#cc0000" onPress={() => setShowDeleteModal(true)} />
-          : <></>
-          }</Text>
+          <Text style={styles.headerTitle}>
+            {resident?.name || "Morador"}{" "}
+            {isEditing ? (
+              <Ionicons
+                name="trash"
+                size={25}
+                color="#cc0000"
+                onPress={() => setShowDeleteModal(true)}
+              />
+            ) : (
+              <></>
+            )}
+          </Text>
         </View>
 
         <View style={styles.formCard}>
@@ -503,22 +476,18 @@ export default function ResidentDetailScreen() {
             <View style={styles.avatar}>
               <Ionicons name="person" size={75} color="#292D32" />
             </View>
-          {
-          isEditing ?
-            <TouchableOpacity
-            style={styles.editAvatarButton}
-              activeOpacity={0.8}
-              disabled={!isEditing}
-            >
-              <Ionicons
-                name="pencil"
-                size={21}
-                color="#235DFF"
-                />
-            </TouchableOpacity>
-            : <></>  
-            }
-        </View>
+            {isEditing ? (
+              <TouchableOpacity
+                style={styles.editAvatarButton}
+                activeOpacity={0.8}
+                disabled={!isEditing}
+              >
+                <Ionicons name="pencil" size={21} color="#235DFF" />
+              </TouchableOpacity>
+            ) : (
+              <></>
+            )}
+          </View>
 
           <Text style={styles.label}>
             Nome <Text style={styles.required}>*</Text>

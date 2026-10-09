@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 
 import { styles } from "./styles";
+import { getStoredUser } from "../../services/session";
 
 const QUICK_BUTTONS_MORADORES: Record<string, string> = {
   "/party-saloon": "Salão de Festas",
@@ -46,12 +46,6 @@ const QUICK_BUTTONS_SINDICO: Record<string, string> = {
   "/chatbot": "Chatbot",
 };
 
-type User = {
-  name?: string;
-  email?: string;
-  role?: string;
-};
-
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -75,19 +69,15 @@ export default function HomeScreen() {
           return;
         }
 
-        const raw = await AsyncStorage.getItem("user");
-        if (raw) {
-          const user: User = JSON.parse(raw);
-          if (user?.name && mounted) {
-            setUserName(user.name);
-            return;
-          }
+        const user = await getStoredUser();
+        if (user?.name && mounted) {
+          setUserName(user.name);
+          return;
         }
 
-        if (mounted) setUserName("morador(a)");
-      } catch (err) {
-        console.warn("Erro ao carregar user:", err);
-        if (mounted) setUserName("morador(a)");
+        if (mounted) router.replace("/login");
+      } catch {
+        if (mounted) router.replace("/login");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -105,27 +95,12 @@ export default function HomeScreen() {
 
     async function loadUserRole() {
       try {
-        let raw: string | null = null;
-        try {
-          raw = await AsyncStorage.getItem("user");
-        } catch (e) {
-          console.log(`Erro - ${e}`);
-        }
-
-        if (!raw && typeof localStorage !== "undefined") {
-          try {
-            raw = localStorage.getItem("user");
-          } catch (e) {
-            console.log(`Erro - ${e}`);
-          }
-        }
-
-        if (!raw) {
+        const user = await getStoredUser();
+        if (!user) {
           if (mounted) setQuickButtons(QUICK_BUTTONS_MORADORES);
           return;
         }
 
-        const user = JSON.parse(raw);
         const role = String(user?.role || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
@@ -133,7 +108,7 @@ export default function HomeScreen() {
 
         if (!mounted) return;
 
-        if (role === "sindico") {
+        if (["sindico", "admin", "adm"].includes(role)) {
           setQuickButtons(QUICK_BUTTONS_SINDICO);
         } else if (role === "funcionario") {
           setQuickButtons(QUICK_BUTTONS_FUNCIONARIOS);
@@ -141,8 +116,7 @@ export default function HomeScreen() {
           setQuickButtons(QUICK_BUTTONS_MORADORES);
         }
         setRoleTitle(role);
-      } catch (err) {
-        console.warn("Erro ao ler user do storage:", err);
+      } catch {
         if (mounted) setQuickButtons(QUICK_BUTTONS_MORADORES);
       }
     }
@@ -190,7 +164,9 @@ export default function HomeScreen() {
 
       <View style={styles.apartmentSection}>
         <Text style={styles.sectionTitle}>
-          {roleTitle === "sindico" ? "Buscar Apartamentos:" : "Seus Apartamentos:"}
+          {roleTitle && ["sindico", "admin", "adm"].includes(roleTitle)
+            ? "Buscar Apartamentos:"
+            : "Seus Apartamentos:"}
         </Text>
 
         <View style={styles.apartmentCard}>

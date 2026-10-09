@@ -1,31 +1,23 @@
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Modal
+  Modal,
 } from "react-native";
 import { styles } from "./styles";
-
-type ApiUser = {
-  _id?: string;
-  email?: string;
-  name?: string;
-  recoverCode?: string;
-  twoFactorCode?: string;
-  twoFactorCodeExpiresAt?: string;
-};
+import { apiFetch, getErrorMessage } from "../../services/api";
+import { saveTwoFactorEmail } from "../../services/session";
 
 type ApiResponse =
   | {
       ok: true;
-      requiresTwoFactor?: boolean;
+      requiresTwoFactor: true;
       message?: string;
-      user?: ApiUser;
+      developmentCode?: string;
     }
   | {
       ok: false;
@@ -38,8 +30,6 @@ const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  const API_BASE = "http://localhost:3000/api";
-
   const handleLogin = async () => {
     if (!email.trim() || !senha) {
       alert("Erro - Preencha email e senha");
@@ -49,24 +39,20 @@ const LoginScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const normalizedEmail = email.trim().toLowerCase();
+      const res = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password: senha }),
+        body: JSON.stringify({ email: normalizedEmail, password: senha }),
       });
 
       const raw = await res.text();
-      console.log("raw:", raw);
 
       let data: ApiResponse | null = null;
 
       try {
         data = raw ? (JSON.parse(raw) as ApiResponse) : null;
-      } catch (parseErr) {
-        console.warn("Login erro ao parsear JSON:", parseErr);
-      }
-
-      console.log("Login body parsed:", data);
+      } catch {}
 
       if (!data) {
         alert(`Erro - Resposta inválida do servidor: ${raw || "vazia"}`);
@@ -79,29 +65,15 @@ const LoginScreen: React.FC = () => {
       }
 
       if (data.requiresTwoFactor) {
-        router.replace({
-          pathname: "/2fa",
-          params: { email: email.trim() },
-        });
+        await saveTwoFactorEmail(normalizedEmail);
+        if (data.developmentCode) {
+          alert(`Código de desenvolvimento: ${data.developmentCode}`);
+        }
+        router.replace("/2fa");
         return;
       }
-
-      if (!data.user) {
-        alert("Erro - O servidor não retornou os dados do usuário.");
-        return;
-      }
-
-      await AsyncStorage.setItem("user", JSON.stringify(data.user));
-
-      alert(`Sucesso - Bem-vindo, ${data.user.name ?? data.user.email}`);
-
-      router.replace({
-        pathname: "/home",
-        params: { name: data.user.name ?? "" },
-      });
-    } catch (err: any) {
-      console.error("Login fetch error:", err);
-      alert(`Erro - Falha de conexão: ${err?.message ?? String(err)}`);
+    } catch (error) {
+      alert(`Erro - ${getErrorMessage(error, "Falha no login")}`);
     } finally {
       setLoading(false);
     }
@@ -174,20 +146,14 @@ const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
-      <Modal
-  transparent
-  visible={loading}
-  animationType="fade"
->
-    <View style={styles.loadingOverlay}>
-      <View style={styles.loadingBox}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>
-          Verificando login...
-        </Text>
-      </View>
-    </View>
-  </Modal>
+      <Modal transparent visible={loading} animationType="fade">
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" />
+            <Text style={styles.loadingText}>Verificando login...</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

@@ -1,10 +1,10 @@
 import { Inter_400Regular } from "@expo-google-fonts/inter";
 import { MaterialIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
 import { Stack, useRouter } from "expo-router";
 import { Alert, Pressable } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { clearSession } from "../src/services/session";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -19,22 +19,13 @@ export default function RootLayout() {
     const router = useRouter();
 
     const handleLogout = async () => {
-      const confirmLogout = () => {
-        AsyncStorage.removeItem("user")
-          .then(() => {
-            if (typeof localStorage !== "undefined") {
-              try {
-                localStorage.removeItem("user");
-              } catch (err) {
-                console.warn("Erro ao limpar localStorage:", err);
-              }
-            }
-
-            router.replace("/");
-          })
-          .catch((err) => {
-            console.error("Erro ao fazer logout:", err);
-          });
+      const confirmLogout = async () => {
+        try {
+          await clearSession();
+          router.replace("/");
+        } catch {
+          Alert.alert("Erro", "Não foi possível encerrar a sessão.");
+        }
       };
 
       if (typeof window !== "undefined") {

@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -11,8 +10,8 @@ import {
 } from "react-native";
 
 import { styles } from "./noticeStyle";
-
-const API_BASE = "http://localhost:3000/api";
+import { apiFetch } from "../../services/api";
+import { getStoredUser } from "../../services/session";
 
 type Aviso = {
   id: string;
@@ -39,14 +38,7 @@ export default function NoticesScreen() {
     let mounted = true;
     async function loadUserRole() {
       try {
-        const raw = await AsyncStorage.getItem("user");
-        let userObj: any = null;
-        if (raw) {
-          userObj = JSON.parse(raw);
-        } else if (typeof localStorage !== "undefined") {
-          const raw2 = localStorage.getItem("user");
-          if (raw2) userObj = JSON.parse(raw2);
-        }
+        const userObj = await getStoredUser();
 
         if (!mounted) return;
 
@@ -55,12 +47,11 @@ export default function NoticesScreen() {
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
-          setIsSindico(role === "sindico");
+          setIsSindico(["sindico", "admin", "adm"].includes(role));
         } else {
           setIsSindico(false);
         }
-      } catch (err) {
-        console.warn("Erro ao ler user do storage:", err);
+      } catch {
         if (mounted) setIsSindico(false);
       }
     }
@@ -76,25 +67,16 @@ export default function NoticesScreen() {
     async function fetchNotices() {
       setLoading(true);
       try {
-        const raw =
-          (await AsyncStorage.getItem("user")) ||
-          (typeof localStorage !== "undefined"
-            ? localStorage.getItem("user")
-            : null);
-        const parsed = raw ? JSON.parse(raw) : null;
-        const userId = parsed?._id || parsed?.id;
-
-        const headers: any = { "Content-Type": "application/json" };
-        if (userId) headers["x-user-id"] = String(userId);
-
-        const res = await fetch(`${API_BASE}/notices`, {
-          method: "GET",
-          headers,
-        });
+        const res = await apiFetch(
+          "/notices",
+          {
+            method: "GET",
+          },
+          true,
+        );
 
         if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
-          console.warn("Falha ao buscar avisos:", res.status, errBody);
+          await res.json().catch(() => ({}));
           if (!mounted) return;
           setAvisos([]);
           return;
@@ -146,8 +128,7 @@ export default function NoticesScreen() {
 
         if (!mounted) return;
         setAvisos(mapped);
-      } catch (err) {
-        console.error("Erro ao buscar avisos:", err);
+      } catch {
         if (!mounted) return;
         setAvisos([]);
       } finally {

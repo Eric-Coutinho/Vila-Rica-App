@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -12,8 +11,7 @@ import {
 } from "react-native";
 
 import { styles } from "./CreatePartySaloonReservationStyles";
-
-const API_BASE = "http://localhost:3000/api";
+import { apiFetch } from "@/src/services/api";
 
 type Guest = {
   id: string;
@@ -84,9 +82,7 @@ export default function CreatePartySaloonScreen() {
     return value.replace(/\D/g, "");
   }
 
-  function handleDateWeb(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+  function handleDateWeb(event: React.ChangeEvent<HTMLInputElement>) {
     const value = event.target.value;
 
     if (!value) {
@@ -99,9 +95,7 @@ export default function CreatePartySaloonScreen() {
     setDate(new Date(year, month - 1, day));
   }
 
-  function handleTimeWeb(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+  function handleTimeWeb(event: React.ChangeEvent<HTMLInputElement>) {
     const value = event.target.value;
 
     if (!value) {
@@ -120,9 +114,7 @@ export default function CreatePartySaloonScreen() {
     setTime(selectedTime);
   }
 
-  function handleGuestBirthDateWeb(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+  function handleGuestBirthDateWeb(event: React.ChangeEvent<HTMLInputElement>) {
     const value = event.target.value;
 
     if (!value) {
@@ -135,10 +127,7 @@ export default function CreatePartySaloonScreen() {
     setGuestBirthDate(new Date(year, month - 1, day));
   }
 
-  function onChangeDateMobile(
-    _event: any,
-    selectedDate?: Date
-  ) {
+  function onChangeDateMobile(_event: any, selectedDate?: Date) {
     if (Platform.OS !== "ios") {
       setShowDatePicker(false);
     }
@@ -148,10 +137,7 @@ export default function CreatePartySaloonScreen() {
     }
   }
 
-  function onChangeTimeMobile(
-    _event: any,
-    selectedTime?: Date
-  ) {
+  function onChangeTimeMobile(_event: any, selectedTime?: Date) {
     if (Platform.OS !== "ios") {
       setShowTimePicker(false);
     }
@@ -161,10 +147,7 @@ export default function CreatePartySaloonScreen() {
     }
   }
 
-  function onChangeGuestBirthMobile(
-    _event: any,
-    selectedDate?: Date
-  ) {
+  function onChangeGuestBirthMobile(_event: any, selectedDate?: Date) {
     if (Platform.OS !== "ios") {
       setShowGuestBirthPicker(false);
     }
@@ -190,9 +173,7 @@ export default function CreatePartySaloonScreen() {
     }
 
     if (!guestBirthDate) {
-      return alert(
-        "Erro - Informe a data de nascimento do convidado."
-      );
+      return alert("Erro - Informe a data de nascimento do convidado.");
     }
 
     const newGuest: Guest = {
@@ -210,9 +191,7 @@ export default function CreatePartySaloonScreen() {
   }
 
   function handleRemoveGuest(id: string) {
-    setGuests((current) =>
-      current.filter((guest) => guest.id !== id)
-    );
+    setGuests((current) => current.filter((guest) => guest.id !== id));
   }
 
   async function handleCreateReservation() {
@@ -231,21 +210,6 @@ export default function CreatePartySaloonScreen() {
     try {
       setLoading(true);
 
-      const raw =
-        (await AsyncStorage.getItem("user")) ||
-        (typeof localStorage !== "undefined"
-          ? localStorage.getItem("user")
-          : null);
-
-      const user = raw ? JSON.parse(raw) : null;
-
-      const userId = user?._id || user?.id;
-
-      if (!userId) {
-        alert("Erro - Usuário logado não encontrado.");
-        return;
-      }
-
       const payload = {
         type: "party_saloon",
         date: formatDatePayload(date),
@@ -259,32 +223,21 @@ export default function CreatePartySaloonScreen() {
         })),
       };
 
-      const response = await fetch(
-        `${API_BASE}/reservation/create-reservation`,
+      const response = await apiFetch(
+        "/reservation/create-reservation",
         {
           method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            "x-user-id": String(userId),
-          },
-
           body: JSON.stringify(payload),
-        }
+        },
+        true,
       );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        console.warn(
-          "Erro ao criar reserva:",
-          response.status,
-          data
-        );
+        console.warn("Erro ao criar reserva:", response.status, data);
 
-        return alert(
-          `Erro - ${data.message || "Falha ao criar reserva."}`
-        );
+        return alert(`Erro - ${data.message || "Falha ao criar reserva."}`);
       }
 
       alert("Sucesso - Reserva criada.");
@@ -293,9 +246,7 @@ export default function CreatePartySaloonScreen() {
     } catch (error) {
       console.error("Erro ao criar reserva:", error);
 
-      alert(
-        "Erro - Não foi possível conectar ao servidor."
-      );
+      alert("Erro - Não foi possível conectar ao servidor.");
     } finally {
       setLoading(false);
     }
@@ -303,9 +254,7 @@ export default function CreatePartySaloonScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.headerTitle}>
-        Reservar{"\n"}Salão de Festas
-      </Text>
+      <Text style={styles.headerTitle}>Reservar{"\n"}Salão de Festas</Text>
 
       <View style={styles.formCard}>
         {/* DATA + HORA */}
@@ -334,9 +283,7 @@ export default function CreatePartySaloonScreen() {
                       color: date ? "#000" : "#777",
                     }}
                   >
-                    {date
-                      ? formatDate(date)
-                      : "dd/mm/aaaa"}
+                    {date ? formatDate(date) : "dd/mm/aaaa"}
                   </Text>
                 </TouchableOpacity>
 
@@ -376,9 +323,7 @@ export default function CreatePartySaloonScreen() {
                       color: time ? "#000" : "#777",
                     }}
                   >
-                    {time
-                      ? formatTime(time)
-                      : "hh:mm"}
+                    {time ? formatTime(time) : "hh:mm"}
                   </Text>
                 </TouchableOpacity>
 
@@ -412,9 +357,7 @@ export default function CreatePartySaloonScreen() {
 
         {/* CONVIDADOS */}
 
-        <Text style={styles.sectionTitle}>
-          Lista de Convidados
-        </Text>
+        <Text style={styles.sectionTitle}>Lista de Convidados</Text>
 
         <Text style={styles.label}>Nome</Text>
 
@@ -435,25 +378,19 @@ export default function CreatePartySaloonScreen() {
               placeholder="000.000.000-00"
               placeholderTextColor="#9b9b9b"
               value={guestCpf}
-              onChangeText={(value) =>
-                setGuestCpf(formatCpf(value))
-              }
+              onChangeText={(value) => setGuestCpf(formatCpf(value))}
               keyboardType="numeric"
               maxLength={14}
             />
           </View>
 
           <View style={styles.rowItem}>
-            <Text style={styles.label}>
-              Data Nasc.
-            </Text>
+            <Text style={styles.label}>Data Nasc.</Text>
 
             {Platform.OS === "web" ? (
               <input
                 type="date"
-                value={formatDatePayload(
-                  guestBirthDate
-                )}
+                value={formatDatePayload(guestBirthDate)}
                 onChange={handleGuestBirthDateWeb}
                 style={styles.webInput as any}
               />
@@ -461,35 +398,24 @@ export default function CreatePartySaloonScreen() {
               <>
                 <TouchableOpacity
                   style={styles.dateInput}
-                  onPress={() =>
-                    setShowGuestBirthPicker(true)
-                  }
+                  onPress={() => setShowGuestBirthPicker(true)}
                 >
                   <Text
                     style={{
-                      color: guestBirthDate
-                        ? "#000"
-                        : "#777",
+                      color: guestBirthDate ? "#000" : "#777",
                     }}
                   >
-                    {guestBirthDate
-                      ? formatDate(guestBirthDate)
-                      : "dd/mm/aaaa"}
+                    {guestBirthDate ? formatDate(guestBirthDate) : "dd/mm/aaaa"}
                   </Text>
                 </TouchableOpacity>
 
                 {showGuestBirthPicker && (
                   <DateTimePicker
-                    value={
-                      guestBirthDate ??
-                      new Date(2000, 0, 1)
-                    }
+                    value={guestBirthDate ?? new Date(2000, 0, 1)}
                     mode="date"
                     display="default"
                     maximumDate={new Date()}
-                    onChange={
-                      onChangeGuestBirthMobile
-                    }
+                    onChange={onChangeGuestBirthMobile}
                   />
                 )}
               </>
@@ -501,9 +427,7 @@ export default function CreatePartySaloonScreen() {
           style={styles.addGuestButton}
           onPress={handleAddGuest}
         >
-          <Text style={styles.addGuestButtonText}>
-            Adicionar Convidado
-          </Text>
+          <Text style={styles.addGuestButtonText}>Adicionar Convidado</Text>
         </TouchableOpacity>
 
         {/* TABELA */}
@@ -518,30 +442,15 @@ export default function CreatePartySaloonScreen() {
           ) : (
             <>
               <View style={styles.tableHeader}>
-                <Text
-                  style={[
-                    styles.tableHeaderText,
-                    styles.nameColumn,
-                  ]}
-                >
+                <Text style={[styles.tableHeaderText, styles.nameColumn]}>
                   Nome
                 </Text>
 
-                <Text
-                  style={[
-                    styles.tableHeaderText,
-                    styles.cpfColumn,
-                  ]}
-                >
+                <Text style={[styles.tableHeaderText, styles.cpfColumn]}>
                   CPF
                 </Text>
 
-                <Text
-                  style={[
-                    styles.tableHeaderText,
-                    styles.dateColumn,
-                  ]}
-                >
+                <Text style={[styles.tableHeaderText, styles.dateColumn]}>
                   Nascimento
                 </Text>
 
@@ -549,50 +458,27 @@ export default function CreatePartySaloonScreen() {
               </View>
 
               {guests.map((guest) => (
-                <View
-                  key={guest.id}
-                  style={styles.tableRow}
-                >
+                <View key={guest.id} style={styles.tableRow}>
                   <Text
-                    style={[
-                      styles.tableText,
-                      styles.nameColumn,
-                    ]}
+                    style={[styles.tableText, styles.nameColumn]}
                     numberOfLines={2}
                   >
                     {guest.name}
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.tableText,
-                      styles.cpfColumn,
-                    ]}
-                  >
+                  <Text style={[styles.tableText, styles.cpfColumn]}>
                     {formatCpf(guest.cpf)}
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.tableText,
-                      styles.dateColumn,
-                    ]}
-                  >
-                    {guest.birthDate
-                      .split("-")
-                      .reverse()
-                      .join("/")}
+                  <Text style={[styles.tableText, styles.dateColumn]}>
+                    {guest.birthDate.split("-").reverse().join("/")}
                   </Text>
 
                   <TouchableOpacity
                     style={styles.removeColumn}
-                    onPress={() =>
-                      handleRemoveGuest(guest.id)
-                    }
+                    onPress={() => handleRemoveGuest(guest.id)}
                   >
-                    <Text style={styles.removeText}>
-                      ✕
-                    </Text>
+                    <Text style={styles.removeText}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -604,17 +490,12 @@ export default function CreatePartySaloonScreen() {
       {/* CONFIRMAR */}
 
       <TouchableOpacity
-        style={[
-          styles.confirmButton,
-          loading && styles.disabledButton,
-        ]}
+        style={[styles.confirmButton, loading && styles.disabledButton]}
         disabled={loading}
         onPress={handleCreateReservation}
       >
         <Text style={styles.confirmButtonText}>
-          {loading
-            ? "Confirmando..."
-            : "Confirmar Reserva"}
+          {loading ? "Confirmando..." : "Confirmar Reserva"}
         </Text>
       </TouchableOpacity>
 
@@ -625,9 +506,7 @@ export default function CreatePartySaloonScreen() {
         disabled={loading}
         onPress={() => router.back()}
       >
-        <Text style={styles.cancelButtonText}>
-          Cancelar
-        </Text>
+        <Text style={styles.cancelButtonText}>Cancelar</Text>
       </TouchableOpacity>
     </ScrollView>
   );
