@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,9 +10,9 @@ import {
   View,
 } from "react-native";
 
-import { styles } from "./notice-idStyle";
 import { apiFetch } from "@/src/services/api";
 import { getStoredUser } from "@/src/services/session";
+import { styles } from "./notice-idStyle";
 
 type CommentItem = {
   _id: string;
@@ -22,6 +22,12 @@ type CommentItem = {
   replies?: any[];
 };
 
+type Referente = {
+  kind: "Todos" | "Bloco" | "Apartamento" | "Morador";
+  refId?: string;
+  residentName?: string;
+};
+
 type Notice = {
   _id: string;
   title: string;
@@ -29,22 +35,20 @@ type Notice = {
   startDate?: string;
   endDate?: string;
   status?: "active" | "closed";
-  referente?: any[];
+  referente?: Referente[];
   comments?: CommentItem[];
   createdBy?: any;
 };
 
 export default function NoticeDetailScreen() {
-  const { id } = useLocalSearchParams() as { id?: string };
-  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
 
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [newComment, setNewComment] = useState("");
-  const [replyText, setReplyText] = useState<{ [k: string]: string }>({});
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [isSindico, setIsSindico] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<"active" | "closed">(
@@ -54,156 +58,267 @@ export default function NoticeDetailScreen() {
 
   useEffect(() => {
     let mounted = true;
-    async function init() {
-      try {
-        const parsed = await getStoredUser();
-        const uid = parsed?._id || null;
-        setUserId(uid);
 
-        const role = String(parsed?.role || "")
+    async function loadUser() {
+      try {
+        const user = await getStoredUser();
+
+        const role = String(user?.role || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
+          .trim()
           .toLowerCase();
-        if (mounted) setIsSindico(["sindico", "admin", "adm"].includes(role));
-      } catch (err) {
-        console.warn("Erro ao ler user:", err);
-      } finally {
-        if (mounted) setLoading(false);
+
+        if (mounted) {
+          setIsSindico(["sindico", "admin", "adm"].includes(role));
+        }
+      } catch {
+        if (mounted) {
+          setIsSindico(false);
+        }
       }
     }
-    init();
+
+    loadUser();
+
     return () => {
       mounted = false;
     };
   }, []);
 
+  const resolveResidentNames = async (
+    referentes: Referente[] = [],
+  ): Promise<Referente[]> => {
+    return Promise.all(
+      referentes.map(async (referente) => {
+        if (referente.kind !== "Morador" || !referente.refId) {
+          return referente;
+        }
+
+        try {
+          const response = await apiFetch(
+            `/auth/users/get/${encodeURIComponent(referente.refId)}`,
+            {
+              method: "GET",
+            },
+            true,
+          );
+
+          if (!response.ok) {
+            return referente;
+          }
+
+          const data = await response.json();
+          const resident = data.user || data.resident || data.data;
+
+          return {
+            ...referente,
+            residentName: resident?.name || referente.refId,
+          };
+        } catch {
+          return referente;
+        }
+      }),
+    );
+  };
+
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
-    async function load() {
+
+    async function loadNotice() {
       setLoading(true);
+
       try {
-        const resNotice = await apiFetch(
-          `/notices/${id}`,
+        const noticeResponse = await apiFetch(
+          `/notices/${encodeURIComponent(id!)}`,
           {
             method: "GET",
           },
           true,
         );
-        if (resNotice.ok) {
-          const body = await resNotice.json().catch(() => ({}));
-          const n = body.notice || body;
+
+        if (noticeResponse.ok) {
+          const body = await noticeResponse.json().catch(() => ({}));
+          const noticeData = body.notice || body;
+
+          const referentes = await resolveResidentNames(
+            noticeData.referente || [],
+          );
+
           if (mounted) {
-            setNotice(n);
-            setSelectedStatus(n?.status === "closed" ? "closed" : "active");
+            setNotice({
+              ...noticeData,
+              referente: referentes,
+            });
+
+            setSelectedStatus(
+              noticeData?.status === "closed" ? "closed" : "active",
+            );
           }
-        } else {
-          console.warn("Erro ao buscar aviso:", resNotice.status);
+        } else if (mounted) {
+          setNotice(null);
         }
 
-        const resComments = await apiFetch(
-          `/notices/${id}/comments`,
-          { method: "GET" },
+        const commentsResponse = await apiFetch(
+          `/notices/${encodeURIComponent(id!)}/comments`,
+          {
+            method: "GET",
+          },
           true,
         );
-        if (resComments.ok) {
-          const body = await resComments.json().catch(() => ({}));
-          const cs = body.comments || [];
-          if (mounted) setComments(cs);
-        } else {
-          console.warn("Erro ao buscar comentários:", resComments.status);
+
+        if (commentsResponse.ok) {
+          const body = await commentsResponse.json().catch(() => ({}));
+
+          if (mounted) {
+            setComments(body.comments || []);
+          }
         }
-      } catch (err) {
-        console.error("Erro carregar aviso:", err);
+      } catch {
+        if (mounted) {
+          setNotice(null);
+          setComments([]);
+        }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
-    load();
+
+    loadNotice();
+
     return () => {
       mounted = false;
     };
   }, [id]);
 
-  const formatDateDisplay = (iso?: any) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d.valueOf())) return String(iso);
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
+  const formatDateDisplay = (value?: string) => {
+    if (!value) {
+      return "";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toLocaleDateString("pt-BR");
   };
 
-  const handleAddComment = async () => {
-    if (!newComment.trim()) return;
-    if (!id) return;
-    setLoading(true);
+  const formatReferente = (referente: Referente) => {
+    if (referente.kind === "Todos") {
+      return "Todos";
+    }
+
+    if (referente.kind === "Morador") {
+      return `Morador: ${
+        referente.residentName || referente.refId || "Não informado"
+      }`;
+    }
+
+    return `${referente.kind}: ${referente.refId || "Não informado"}`;
+  };
+
+  const refreshComments = async () => {
+    if (!id) {
+      return;
+    }
+
     try {
-      const res = await apiFetch(
-        `/notices/${id}/comments`,
+      const response = await apiFetch(
+        `/notices/${encodeURIComponent(id)}/comments`,
         {
-          method: "POST",
-          body: JSON.stringify({ text: newComment.trim() }),
+          method: "GET",
         },
         true,
       );
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        alert(`Erro ${body.message || "Falha ao adicionar comentário"}`);
-      } else {
-        await refreshComments();
-        setNewComment("");
+      if (response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setComments(body.comments || []);
       }
-    } catch (err) {
-      console.error("Erro add comment:", err);
-      alert("Erro - Não foi possível adicionar comentário");
-    } finally {
-      setLoading(false);
+    } catch {
+      alert("Erro - Não foi possível atualizar os comentários");
     }
   };
 
-  async function refreshComments() {
-    if (!id) return;
-    try {
-      const res = await apiFetch(
-        `/notices/${id}/comments`,
-        { method: "GET" },
-        true,
-      );
-      if (res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setComments(body.comments || []);
-      }
-    } catch (err) {
-      console.error("refresh comments err", err);
-    }
-  }
+  const handleAddComment = async () => {
+    const text = newComment.trim();
 
-  const handleReply = async (commentId: string) => {
-    const text = (replyText[commentId] || "").trim();
-    if (!text) return;
-    if (!id) return;
+    if (!text || !id) {
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const res = await apiFetch(
-        `/notices/${id}/comments/${commentId}/reply`,
+      const response = await apiFetch(
+        `/notices/${encodeURIComponent(id)}/comments`,
         {
           method: "POST",
           body: JSON.stringify({ text }),
         },
         true,
       );
-      if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        alert(`Erro - ${b.message || "Falha ao responder"}`);
-      } else {
-        setReplyText((prev) => ({ ...prev, [commentId]: "" }));
-        await refreshComments();
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+
+        alert(`Erro - ${body.message || "Falha ao adicionar o comentário"}`);
+
+        return;
       }
-    } catch (err) {
-      console.error("reply err", err);
-      alert("Erro - Não foi possível enviar resposta");
+
+      setNewComment("");
+      await refreshComments();
+    } catch {
+      alert("Erro - Não foi possível adicionar o comentário");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReply = async (commentId: string) => {
+    const text = (replyText[commentId] || "").trim();
+
+    if (!text || !id) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(
+        `/notices/${encodeURIComponent(
+          id,
+        )}/comments/${encodeURIComponent(commentId)}/reply`,
+        {
+          method: "POST",
+          body: JSON.stringify({ text }),
+        },
+        true,
+      );
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+
+        alert(`Erro - ${body.message || "Falha ao responder"}`);
+        return;
+      }
+
+      setReplyText((current) => ({
+        ...current,
+        [commentId]: "",
+      }));
+
+      await refreshComments();
+    } catch {
+      alert("Erro - Não foi possível enviar a resposta");
     }
   };
 
@@ -213,36 +328,44 @@ export default function NoticeDetailScreen() {
   };
 
   const handleSaveStatus = async () => {
-    if (!id) return;
+    if (!id) {
+      return;
+    }
+
     setSavingStatus(true);
+
     try {
-      const res = await apiFetch(
-        `/notices/${id}`,
+      const response = await apiFetch(
+        `/notices/${encodeURIComponent(id)}`,
         {
           method: "PUT",
-          body: JSON.stringify({ status: selectedStatus }),
+          body: JSON.stringify({
+            status: selectedStatus,
+          }),
         },
         true,
       );
 
-      if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        alert(`Erro ${b.message || "Falha ao atualizar status"}`);
-      } else {
-        const resNotice = await apiFetch(
-          `/notices/${id}`,
-          { method: "GET" },
-          true,
-        );
-        if (resNotice.ok) {
-          const nb = await resNotice.json().catch(() => ({}));
-          setNotice(nb.notice || nb);
-        }
-        setStatusModalVisible(false);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+
+        alert(`Erro - ${body.message || "Falha ao atualizar o status"}`);
+
+        return;
       }
-    } catch (err) {
-      console.error("save status err", err);
-      alert("Erro - Não foi possível atualizar status");
+
+      setNotice((current) =>
+        current
+          ? {
+              ...current,
+              status: selectedStatus,
+            }
+          : current,
+      );
+
+      setStatusModalVisible(false);
+    } catch {
+      alert("Erro - Não foi possível atualizar o status");
     } finally {
       setSavingStatus(false);
     }
@@ -272,8 +395,14 @@ export default function NoticeDetailScreen() {
         <View style={styles.titleRow}>
           <Text style={styles.title}>{notice.title}</Text>
         </View>
+
         <View style={styles.titleRowStatus}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
             <Text
               style={[
                 styles.statusBadge,
@@ -286,6 +415,7 @@ export default function NoticeDetailScreen() {
               {notice.status === "active" ? "Ativo" : "Fechado"}
             </Text>
           </View>
+
           {isSindico && (
             <TouchableOpacity
               style={styles.pencilBtn}
@@ -295,41 +425,55 @@ export default function NoticeDetailScreen() {
             </TouchableOpacity>
           )}
         </View>
+
         <Text style={styles.label}>Data de início:</Text>
+
         <Text style={styles.dateText}>
           {formatDateDisplay(notice.startDate)}
-          {notice.endDate
-            ? `Data de fim: ${formatDateDisplay(notice.endDate)}`
-            : ""}
         </Text>
 
+        {notice.endDate && (
+          <>
+            <Text style={styles.label}>Data de fim:</Text>
+
+            <Text style={styles.dateText}>
+              {formatDateDisplay(notice.endDate)}
+            </Text>
+          </>
+        )}
+
         <Text style={styles.label}>Descrição:</Text>
+
         <Text style={styles.description}>{notice.description || "—"}</Text>
 
         <Text style={[styles.label, { marginTop: 12 }]}>Referentes:</Text>
+
         <Text>
-          {(notice.referente || [])
-            .map((r: any) => `${r.kind}${r.refId ? " " + r.refId : ""}`)
-            .join(", ") || "Todos"}
+          {(notice.referente || []).map(formatReferente).join(", ") || "Todos"}
         </Text>
       </View>
 
       <Text style={[styles.label, { marginTop: 18 }]}>Comentários</Text>
 
       <View style={{ marginBottom: 12 }}>
-        {comments.map((c) => {
+        {comments.map((comment) => {
           const author =
-            c.author &&
-            (typeof c.author === "object"
-              ? c.author.name || c.author.email
-              : c.author);
-          const timeAgo = c.createdAt
-            ? `${Math.round(
-                (Date.now() - new Date(c.createdAt).getTime()) / 3600000,
-              )}h atrás`
-            : "";
+            comment.author && typeof comment.author === "object"
+              ? comment.author.name || comment.author.email
+              : comment.author;
+
+          const hoursAgo = comment.createdAt
+            ? Math.max(
+                0,
+                Math.round(
+                  (Date.now() - new Date(comment.createdAt).getTime()) /
+                    3600000,
+                ),
+              )
+            : null;
+
           return (
-            <View key={c._id} style={styles.commentCard}>
+            <View key={comment._id} style={styles.commentCard}>
               <View
                 style={{
                   flexDirection: "row",
@@ -337,18 +481,26 @@ export default function NoticeDetailScreen() {
                 }}
               >
                 <Text style={styles.commentAuthor}>{author || "Usuário"}</Text>
-                <Text style={styles.commentTime}>{timeAgo}</Text>
-              </View>
-              <Text style={styles.commentText}>{c.text}</Text>
 
-              {Array.isArray(c.replies) && c.replies.length > 0 && (
+                <Text style={styles.commentTime}>
+                  {hoursAgo !== null ? `${hoursAgo}h atrás` : ""}
+                </Text>
+              </View>
+
+              <Text style={styles.commentText}>{comment.text}</Text>
+
+              {Array.isArray(comment.replies) && comment.replies.length > 0 && (
                 <View style={{ marginTop: 8 }}>
-                  {c.replies.map((r: any) => (
-                    <View key={r._id} style={styles.replyCard}>
+                  {comment.replies.map((reply: any) => (
+                    <View key={reply._id} style={styles.replyCard}>
                       <Text style={{ fontWeight: "700" }}>
-                        {r.authorName || r.author}
+                        {reply.authorName ||
+                          reply.author?.name ||
+                          reply.author ||
+                          "Usuário"}
                       </Text>
-                      <Text>{r.text}</Text>
+
+                      <Text>{reply.text}</Text>
                     </View>
                   ))}
                 </View>
@@ -357,15 +509,19 @@ export default function NoticeDetailScreen() {
               <View style={{ marginTop: 8 }}>
                 <TextInput
                   placeholder="Responder..."
-                  value={replyText[c._id] || ""}
-                  onChangeText={(t) =>
-                    setReplyText((p) => ({ ...p, [c._id]: t }))
+                  value={replyText[comment._id] || ""}
+                  onChangeText={(text) =>
+                    setReplyText((current) => ({
+                      ...current,
+                      [comment._id]: text,
+                    }))
                   }
                   style={styles.replyInput}
                 />
+
                 <TouchableOpacity
                   style={styles.replyBtn}
-                  onPress={() => handleReply(c._id)}
+                  onPress={() => handleReply(comment._id)}
                 >
                   <Text style={{ color: "#fff" }}>Responder</Text>
                 </TouchableOpacity>
@@ -382,16 +538,32 @@ export default function NoticeDetailScreen() {
         style={styles.newCommentInput}
         multiline
       />
+
       <TouchableOpacity style={styles.addCommentBtn} onPress={handleAddComment}>
-        <Text style={{ color: "#fff", fontWeight: "700" }}>
+        <Text
+          style={{
+            color: "#fff",
+            fontWeight: "700",
+          }}
+        >
           Adicionar Comentário
         </Text>
       </TouchableOpacity>
 
-      <Modal visible={statusModalVisible} animationType="slide" transparent>
+      <Modal
+        visible={statusModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={{ fontWeight: "700", marginBottom: 8 }}>
+            <Text
+              style={{
+                fontWeight: "700",
+                marginBottom: 8,
+              }}
+            >
               Alterar status
             </Text>
 
@@ -415,17 +587,32 @@ export default function NoticeDetailScreen() {
               <Text>Fechado</Text>
             </TouchableOpacity>
 
-            <View style={{ flexDirection: "row", marginTop: 12 }}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: "#ccc" }]}
-                onPress={() => setStatusModalVisible(false)}
-              >
-                <Text>Cancelar</Text>
-              </TouchableOpacity>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 12,
+              }}
+            >
               <TouchableOpacity
                 style={[
                   styles.modalBtn,
-                  { marginLeft: 8, backgroundColor: "#466CA5" },
+                  {
+                    backgroundColor: "#ccc",
+                  },
+                ]}
+                onPress={() => setStatusModalVisible(false)}
+                disabled={savingStatus}
+              >
+                <Text>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalBtn,
+                  {
+                    marginLeft: 8,
+                    backgroundColor: "#466CA5",
+                  },
                 ]}
                 onPress={handleSaveStatus}
                 disabled={savingStatus}
