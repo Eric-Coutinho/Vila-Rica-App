@@ -276,6 +276,42 @@ export default function RootLayout() {
             },
           }}
         />
+        <Stack.Screen
+          name="complaints"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="create-complaint"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="complaints/[id]"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
