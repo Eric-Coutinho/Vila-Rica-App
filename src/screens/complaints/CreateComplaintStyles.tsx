@@ -211,6 +211,34 @@ export const styles = StyleSheet.create({
   apartmentField: {
     flex: 1,
   },
+  residentSearchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  residentSearchInput: {
+    flex: 1,
+  },
+  residentSearchButton: {
+    width: 43,
+    height: 39,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 5,
+    backgroundColor: "#466CA5",
+  },
+  searchHint: {
+    color: "#666",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  noResidentsText: {
+    color: "#666",
+    fontSize: 13,
+    textAlign: "center",
+    paddingVertical: 16,
+  },
   modalLoading: {
     minHeight: 70,
     flexDirection: "row",
@@ -233,12 +261,6 @@ export const styles = StyleSheet.create({
     color: "#8a2424",
     fontSize: 13,
     lineHeight: 18,
-  },
-  tryAgainText: {
-    color: "#315f9f",
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 7,
   },
   modalActions: {
     flexDirection: "row",

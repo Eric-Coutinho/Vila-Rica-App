@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -63,9 +63,10 @@ export default function CreateComplaintScreen() {
   const [residentOptions, setResidentOptions] = useState<
     ComplaintResidentOption[]
   >([]);
-  const [residentsLoaded, setResidentsLoaded] = useState(false);
   const [loadingResidents, setLoadingResidents] = useState(false);
   const [residentLoadError, setResidentLoadError] = useState("");
+  const [residentSearch, setResidentSearch] = useState("");
+  const [residentSearchPerformed, setResidentSearchPerformed] = useState(false);
   const [involvedModalVisible, setInvolvedModalVisible] = useState(false);
   const [involvedType, setInvolvedType] = useState<InvolvedType>("apartment");
   const [selectedResidentId, setSelectedResidentId] = useState("");
@@ -85,30 +86,38 @@ export default function CreateComplaintScreen() {
     return parts.length > 0 ? parts.join(", ") : "Apartamento / Morador...";
   }, [apartments, residents]);
 
-  const loadResidents = useCallback(async () => {
-    if (residentsLoaded || loadingResidents) return;
+  const searchResidents = async () => {
+    const search = residentSearch.trim();
+    if (search.length < 2) {
+      Alert.alert("Atenção", "Digite pelo menos 2 caracteres para pesquisar.");
+      return;
+    }
 
     setLoadingResidents(true);
     setResidentLoadError("");
+    setSelectedResidentId("");
     try {
-      const options = await listComplaintResidents();
+      const options = await listComplaintResidents(search);
       setResidentOptions(options);
-      setResidentsLoaded(true);
+      setResidentSearchPerformed(true);
     } catch (error) {
       setResidentLoadError(
-        error instanceof ApiError && error.status === 403
-          ? "Seu perfil não possui acesso à lista de moradores. Informe um apartamento envolvido."
-          : getErrorMessage(error, "Não foi possível carregar os moradores."),
+        getErrorMessage(error, "Não foi possível pesquisar os moradores."),
       );
+      setResidentOptions([]);
+      setResidentSearchPerformed(true);
+      if (error instanceof ApiError && error.status === 401) {
+        router.replace("/login");
+      }
     } finally {
       setLoadingResidents(false);
     }
-  }, [loadingResidents, residentsLoaded]);
+  };
 
   const changeInvolvedType = (value: InvolvedType) => {
     setInvolvedType(value);
     setSelectedResidentId("");
-    if (value === "resident") void loadResidents();
+    setResidentLoadError("");
   };
 
   const addInvolved = () => {
@@ -128,6 +137,9 @@ export default function CreateComplaintScreen() {
         ]);
       }
       setSelectedResidentId("");
+      setResidentSearch("");
+      setResidentOptions([]);
+      setResidentSearchPerformed(false);
     } else {
       const bloco = apartmentBlock.trim();
       const apartamento = apartmentNumber.trim();
@@ -447,12 +459,36 @@ export default function CreateComplaintScreen() {
 
             {involvedType === "resident" ? (
               <>
-                <Text style={styles.label}>Morador</Text>
+                <Text style={styles.label}>Pesquisar morador</Text>
+                <View style={styles.residentSearchRow}>
+                  <TextInput
+                    style={[styles.input, styles.residentSearchInput]}
+                    value={residentSearch}
+                    onChangeText={(value) => {
+                      setResidentSearch(value);
+                      setResidentSearchPerformed(false);
+                      setResidentLoadError("");
+                    }}
+                    placeholder="Digite o nome..."
+                    placeholderTextColor="#888"
+                    autoCapitalize="words"
+                    returnKeyType="search"
+                    onSubmitEditing={() => void searchResidents()}
+                  />
+                  <TouchableOpacity
+                    style={styles.residentSearchButton}
+                    onPress={() => void searchResidents()}
+                    disabled={loadingResidents}
+                  >
+                    <Ionicons name="search" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
                 {loadingResidents ? (
                   <View style={styles.modalLoading}>
                     <ActivityIndicator color="#466CA5" />
                     <Text style={styles.modalLoadingText}>
-                      Carregando moradores...
+                      Pesquisando moradores...
                     </Text>
                   </View>
                 ) : residentLoadError ? (
@@ -460,33 +496,41 @@ export default function CreateComplaintScreen() {
                     <Text style={styles.modalErrorText}>
                       {residentLoadError}
                     </Text>
-                    <TouchableOpacity onPress={() => void loadResidents()}>
-                      <Text style={styles.tryAgainText}>Tentar novamente</Text>
-                    </TouchableOpacity>
                   </View>
+                ) : residentSearchPerformed && residentOptions.length === 0 ? (
+                  <Text style={styles.noResidentsText}>
+                    Nenhum morador encontrado.
+                  </Text>
+                ) : residentOptions.length > 0 ? (
+                  <>
+                    <Text style={styles.label}>Morador</Text>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={selectedResidentId}
+                        onValueChange={(value) =>
+                          setSelectedResidentId(String(value))
+                        }
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="Selecione..." value="" />
+                        {residentOptions.map((resident) => (
+                          <Picker.Item
+                            key={resident.id}
+                            label={`${resident.name}${
+                              resident.bloco && resident.apartamento
+                                ? ` - Bl. ${resident.bloco}, Ap. ${resident.apartamento}`
+                                : ""
+                            }`}
+                            value={resident.id}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                  </>
                 ) : (
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={selectedResidentId}
-                      onValueChange={(value) =>
-                        setSelectedResidentId(String(value))
-                      }
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Selecione..." value="" />
-                      {residentOptions.map((resident) => (
-                        <Picker.Item
-                          key={resident.id}
-                          label={`${resident.name}${
-                            resident.bloco && resident.apartamento
-                              ? ` - Bl. ${resident.bloco}, Ap. ${resident.apartamento}`
-                              : ""
-                          }`}
-                          value={resident.id}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                  <Text style={styles.searchHint}>
+                    Pesquise pelo nome para selecionar um morador envolvido.
+                  </Text>
                 )}
               </>
             ) : (
@@ -526,13 +570,13 @@ export default function CreateComplaintScreen() {
                 style={[
                   styles.modalAddButton,
                   involvedType === "resident" &&
-                    (loadingResidents || !!residentLoadError) &&
+                    (loadingResidents || !selectedResidentId) &&
                     styles.buttonDisabled,
                 ]}
                 onPress={addInvolved}
                 disabled={
                   involvedType === "resident" &&
-                  (loadingResidents || !!residentLoadError)
+                  (loadingResidents || !selectedResidentId)
                 }
               >
                 <Text style={styles.primaryButtonText}>Adicionar</Text>

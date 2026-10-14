@@ -23,12 +23,12 @@ type ComplaintListResponse = ErrorResponse & {
   meta?: ComplaintPagination;
 };
 
-type UsersResponse = ErrorResponse & {
-  users?: {
-    _id: string;
+type InvolvedResidentsResponse = ErrorResponse & {
+  residents?: {
+    id: string;
     name?: string;
-    bloco?: string;
-    apartamento?: string;
+    bloco?: string | null;
+    apartamento?: string | null;
   }[];
 };
 
@@ -197,22 +197,26 @@ export async function deleteComplaint(complaintId: string): Promise<void> {
   ensureSuccess(response, data, "Não foi possível excluir a reclamação.");
 }
 
-export async function listComplaintResidents(): Promise<
-  ComplaintResidentOption[]
-> {
+export async function listComplaintResidents(
+  search: string,
+): Promise<ComplaintResidentOption[]> {
+  const params = new URLSearchParams({
+    search: search.trim(),
+    limit: "10",
+  });
   const response = await apiFetch(
-    "/auth/list-users?role=morador&limit=200",
+    `/complaints/involved-residents?${params.toString()}`,
     { method: "GET" },
     true,
   );
-  const data = await parseJson<UsersResponse>(response);
-  ensureSuccess(response, data, "Não foi possível carregar os moradores.");
+  const data = await parseJson<InvolvedResidentsResponse>(response);
+  ensureSuccess(response, data, "Não foi possível pesquisar os moradores.");
 
-  return (data.users ?? []).map((user) => ({
-    id: user._id,
-    _id: user._id,
-    name: user.name || "Morador",
-    bloco: user.bloco,
-    apartamento: user.apartamento,
+  return (data.residents ?? []).map((resident) => ({
+    id: resident.id,
+    _id: resident.id,
+    name: resident.name || "Morador",
+    bloco: resident.bloco || undefined,
+    apartamento: resident.apartamento || undefined,
   }));
 }
