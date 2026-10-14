@@ -19,6 +19,11 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#fff",
   },
+  loadingText: {
+    marginTop: 12,
+    color: "#555",
+    fontSize: 15,
+  },
   title: {
     fontSize: 24,
     lineHeight: 27,
@@ -101,6 +106,51 @@ export const styles = StyleSheet.create({
   list: {
     marginTop: 20,
   },
+  refreshingRow: {
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+  refreshingText: {
+    color: "#555",
+    fontSize: 13,
+    marginLeft: 7,
+  },
+  resultCount: {
+    color: "#666",
+    fontSize: 13,
+    textAlign: "right",
+    marginTop: 13,
+  },
+  errorBox: {
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e2b6b6",
+    borderRadius: 6,
+    backgroundColor: "#fff4f4",
+    padding: 12,
+    marginTop: 15,
+  },
+  errorText: {
+    color: "#8a2424",
+    fontSize: 14,
+    lineHeight: 19,
+    textAlign: "center",
+  },
+  retryButton: {
+    borderRadius: 5,
+    backgroundColor: "#466CA5",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginTop: 10,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   card: {
     width: "100%",
     borderWidth: 1,
@@ -167,6 +217,21 @@ export const styles = StyleSheet.create({
   emptyText: {
     color: "#666",
     fontSize: 15,
+  },
+  loadMoreButton: {
+    minHeight: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#466CA5",
+    borderRadius: 6,
+    backgroundColor: "#fff",
+    marginTop: 3,
+  },
+  loadMoreButtonText: {
+    color: "#466CA5",
+    fontSize: 15,
+    fontWeight: "700",
   },
   chatButton: {
     position: "absolute",

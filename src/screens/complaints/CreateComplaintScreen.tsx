@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,29 +16,17 @@ import {
   View,
 } from "react-native";
 
-import { createComplaint } from "../../services/complaintService";
-import { getStoredUser } from "../../services/session";
+import { ApiError, getErrorMessage } from "../../services/api";
+import {
+  createComplaint,
+  listComplaintResidents,
+} from "../../services/complaintService";
 import type {
   ComplaintApartment,
   ComplaintPerson,
+  ComplaintResidentOption,
 } from "../../types/complaint";
 import { styles } from "./CreateComplaintStyles";
-
-const AVAILABLE_RESIDENTS: ComplaintPerson[] = [
-  { id: "resident-1", name: "Morador 1" },
-  { id: "resident-2", name: "Morador 2" },
-  { id: "resident-3", name: "Morador 3" },
-  { id: "resident-4", name: "Morador 4" },
-  { id: "resident-5", name: "Morador 5" },
-  { id: "resident-6", name: "Morador 6" },
-];
-
-const AVAILABLE_APARTMENTS: ComplaintApartment[] = [
-  { id: "apartment-23-7", apartamento: "23", bloco: "7" },
-  { id: "apartment-24-7", apartamento: "24", bloco: "7" },
-  { id: "apartment-12-3", apartamento: "12", bloco: "3" },
-  { id: "apartment-18-4", apartamento: "18", bloco: "4" },
-];
 
 type InvolvedType = "resident" | "apartment";
 
@@ -49,6 +37,11 @@ const toDateInputValue = (date: Date | null) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const toOccurrenceIso = (date: Date) =>
+  new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12),
+  ).toISOString();
 
 const toDisplayDate = (date: Date | null) => {
   if (!date) return "Data do ocorrido...";
@@ -67,10 +60,17 @@ export default function CreateComplaintScreen() {
   const [contactPhone, setContactPhone] = useState("");
   const [residents, setResidents] = useState<ComplaintPerson[]>([]);
   const [apartments, setApartments] = useState<ComplaintApartment[]>([]);
+  const [residentOptions, setResidentOptions] = useState<
+    ComplaintResidentOption[]
+  >([]);
+  const [residentsLoaded, setResidentsLoaded] = useState(false);
+  const [loadingResidents, setLoadingResidents] = useState(false);
+  const [residentLoadError, setResidentLoadError] = useState("");
   const [involvedModalVisible, setInvolvedModalVisible] = useState(false);
-  const [involvedType, setInvolvedType] =
-    useState<InvolvedType>("resident");
-  const [selectedInvolvedId, setSelectedInvolvedId] = useState("");
+  const [involvedType, setInvolvedType] = useState<InvolvedType>("apartment");
+  const [selectedResidentId, setSelectedResidentId] = useState("");
+  const [apartmentBlock, setApartmentBlock] = useState("");
+  const [apartmentNumber, setApartmentNumber] = useState("");
   const [saving, setSaving] = useState(false);
 
   const selectedInvolvedLabel = useMemo(() => {
@@ -85,37 +85,65 @@ export default function CreateComplaintScreen() {
     return parts.length > 0 ? parts.join(", ") : "Apartamento / Morador...";
   }, [apartments, residents]);
 
-  const availableOptions =
-    involvedType === "resident" ? AVAILABLE_RESIDENTS : AVAILABLE_APARTMENTS;
+  const loadResidents = useCallback(async () => {
+    if (residentsLoaded || loadingResidents) return;
+
+    setLoadingResidents(true);
+    setResidentLoadError("");
+    try {
+      const options = await listComplaintResidents();
+      setResidentOptions(options);
+      setResidentsLoaded(true);
+    } catch (error) {
+      setResidentLoadError(
+        error instanceof ApiError && error.status === 403
+          ? "Seu perfil não possui acesso à lista de moradores. Informe um apartamento envolvido."
+          : getErrorMessage(error, "Não foi possível carregar os moradores."),
+      );
+    } finally {
+      setLoadingResidents(false);
+    }
+  }, [loadingResidents, residentsLoaded]);
+
+  const changeInvolvedType = (value: InvolvedType) => {
+    setInvolvedType(value);
+    setSelectedResidentId("");
+    if (value === "resident") void loadResidents();
+  };
 
   const addInvolved = () => {
-    if (!selectedInvolvedId) {
-      Alert.alert("Atenção", "Selecione um envolvido.");
-      return;
-    }
-
     if (involvedType === "resident") {
-      const resident = AVAILABLE_RESIDENTS.find(
-        (item) => item.id === selectedInvolvedId,
-      );
+      if (!selectedResidentId) {
+        Alert.alert("Atenção", "Selecione um morador.");
+        return;
+      }
 
+      const resident = residentOptions.find(
+        (item) => item.id === selectedResidentId,
+      );
       if (resident && !residents.some((item) => item.id === resident.id)) {
-        setResidents((current) => [...current, resident]);
+        setResidents((current) => [
+          ...current,
+          { id: resident.id, _id: resident._id, name: resident.name },
+        ]);
       }
+      setSelectedResidentId("");
     } else {
-      const apartment = AVAILABLE_APARTMENTS.find(
-        (item) => item.id === selectedInvolvedId,
-      );
-
-      if (
-        apartment &&
-        !apartments.some((item) => item.id === apartment.id)
-      ) {
-        setApartments((current) => [...current, apartment]);
+      const bloco = apartmentBlock.trim();
+      const apartamento = apartmentNumber.trim();
+      if (!bloco || !apartamento) {
+        Alert.alert("Atenção", "Informe o bloco e o apartamento.");
+        return;
       }
+
+      const id = `${bloco}:${apartamento}`;
+      if (!apartments.some((item) => item.id === id)) {
+        setApartments((current) => [...current, { id, bloco, apartamento }]);
+      }
+      setApartmentBlock("");
+      setApartmentNumber("");
     }
 
-    setSelectedInvolvedId("");
     setInvolvedModalVisible(false);
   };
 
@@ -124,17 +152,18 @@ export default function CreateComplaintScreen() {
       Alert.alert("Atenção", "Informe a data do ocorrido.");
       return;
     }
-
+    if (occurrenceDate.getTime() > Date.now()) {
+      Alert.alert("Atenção", "A data do ocorrido não pode estar no futuro.");
+      return;
+    }
     if (!title.trim()) {
       Alert.alert("Atenção", "Informe o título da reclamação.");
       return;
     }
-
     if (!description.trim()) {
       Alert.alert("Atenção", "Informe a descrição da reclamação.");
       return;
     }
-
     if (!useDefaultContact && (!contactEmail.trim() || !contactPhone.trim())) {
       Alert.alert(
         "Atenção",
@@ -144,25 +173,15 @@ export default function CreateComplaintScreen() {
     }
 
     setSaving(true);
-
     try {
-      const user = await getStoredUser();
-      const dateValue = toDateInputValue(occurrenceDate);
-
       await createComplaint({
         title: title.trim(),
         description: description.trim(),
-        occurrenceDate: `${dateValue}T12:00:00.000Z`,
+        occurrenceDate: toOccurrenceIso(occurrenceDate),
         involved: { residents, apartments },
         useDefaultContact,
         contactEmail: useDefaultContact ? undefined : contactEmail.trim(),
         contactPhone: useDefaultContact ? undefined : contactPhone.trim(),
-        createdBy: {
-          id: user?._id || "current-resident",
-          name: user?.name || "Morador",
-          bloco: "7",
-          apartamento: "23",
-        },
       });
 
       Alert.alert("Sucesso", "Reclamação registrada.");
@@ -170,10 +189,11 @@ export default function CreateComplaintScreen() {
     } catch (error) {
       Alert.alert(
         "Erro",
-        error instanceof Error
-          ? error.message
-          : "Não foi possível registrar a reclamação.",
+        getErrorMessage(error, "Não foi possível registrar a reclamação."),
       );
+      if (error instanceof ApiError && error.status === 401) {
+        router.replace("/login");
+      }
     } finally {
       setSaving(false);
     }
@@ -195,13 +215,13 @@ export default function CreateComplaintScreen() {
         {Platform.OS === "web" ? (
           <input
             type="date"
+            max={toDateInputValue(new Date())}
             value={toDateInputValue(occurrenceDate)}
             onChange={(event) => {
               if (!event.target.value) {
                 setOccurrenceDate(null);
                 return;
               }
-
               const [year, month, day] = event.target.value
                 .split("-")
                 .map(Number);
@@ -264,6 +284,7 @@ export default function CreateComplaintScreen() {
               <View key={resident.id} style={styles.chip}>
                 <Text style={styles.chipText}>{resident.name}</Text>
                 <TouchableOpacity
+                  accessibilityLabel={`Remover ${resident.name}`}
                   onPress={() =>
                     setResidents((current) =>
                       current.filter((item) => item.id !== resident.id),
@@ -281,6 +302,7 @@ export default function CreateComplaintScreen() {
                   Ap. {apartment.apartamento} / Bl. {apartment.bloco}
                 </Text>
                 <TouchableOpacity
+                  accessibilityLabel={`Remover apartamento ${apartment.apartamento}`}
                   onPress={() =>
                     setApartments((current) =>
                       current.filter((item) => item.id !== apartment.id),
@@ -349,11 +371,12 @@ export default function CreateComplaintScreen() {
           onChangeText={setContactEmail}
           editable={!useDefaultContact}
           placeholder={
-            useDefaultContact ? "Dados do cadastro" : "Exemplo@gmail.com"
+            useDefaultContact ? "Dados do cadastro" : "exemplo@email.com"
           }
           placeholderTextColor="#888"
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <Text style={styles.label}>Telefone para contato</Text>
@@ -371,7 +394,7 @@ export default function CreateComplaintScreen() {
       </View>
 
       <TouchableOpacity
-        style={styles.submitButton}
+        style={[styles.submitButton, saving && styles.buttonDisabled]}
         activeOpacity={0.85}
         onPress={handleSubmit}
         disabled={saving}
@@ -412,40 +435,84 @@ export default function CreateComplaintScreen() {
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={involvedType}
-                onValueChange={(value: InvolvedType) => {
-                  setInvolvedType(value);
-                  setSelectedInvolvedId("");
-                }}
+                onValueChange={(value: InvolvedType) =>
+                  changeInvolvedType(value)
+                }
                 style={styles.picker}
               >
-                <Picker.Item label="Morador" value="resident" />
                 <Picker.Item label="Apartamento" value="apartment" />
+                <Picker.Item label="Morador" value="resident" />
               </Picker>
             </View>
 
-            <Text style={styles.label}>
-              {involvedType === "resident" ? "Morador" : "Apartamento"}
-            </Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedInvolvedId}
-                onValueChange={(value) => setSelectedInvolvedId(String(value))}
-                style={styles.picker}
-              >
-                <Picker.Item label="Selecione..." value="" />
-                {availableOptions.map((option) => (
-                  <Picker.Item
-                    key={option.id}
-                    label={
-                      "name" in option
-                        ? option.name
-                        : `Apartamento ${option.apartamento}, Bloco ${option.bloco}`
-                    }
-                    value={option.id}
+            {involvedType === "resident" ? (
+              <>
+                <Text style={styles.label}>Morador</Text>
+                {loadingResidents ? (
+                  <View style={styles.modalLoading}>
+                    <ActivityIndicator color="#466CA5" />
+                    <Text style={styles.modalLoadingText}>
+                      Carregando moradores...
+                    </Text>
+                  </View>
+                ) : residentLoadError ? (
+                  <View style={styles.modalErrorBox}>
+                    <Text style={styles.modalErrorText}>
+                      {residentLoadError}
+                    </Text>
+                    <TouchableOpacity onPress={() => void loadResidents()}>
+                      <Text style={styles.tryAgainText}>Tentar novamente</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.pickerWrapper}>
+                    <Picker
+                      selectedValue={selectedResidentId}
+                      onValueChange={(value) =>
+                        setSelectedResidentId(String(value))
+                      }
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Selecione..." value="" />
+                      {residentOptions.map((resident) => (
+                        <Picker.Item
+                          key={resident.id}
+                          label={`${resident.name}${
+                            resident.bloco && resident.apartamento
+                              ? ` - Bl. ${resident.bloco}, Ap. ${resident.apartamento}`
+                              : ""
+                          }`}
+                          value={resident.id}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.apartmentFields}>
+                <View style={styles.apartmentField}>
+                  <Text style={styles.label}>Bloco</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={apartmentBlock}
+                    onChangeText={setApartmentBlock}
+                    placeholder="Bloco"
+                    placeholderTextColor="#888"
                   />
-                ))}
-              </Picker>
-            </View>
+                </View>
+                <View style={styles.apartmentField}>
+                  <Text style={styles.label}>Apartamento</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={apartmentNumber}
+                    onChangeText={setApartmentNumber}
+                    placeholder="Apartamento"
+                    placeholderTextColor="#888"
+                  />
+                </View>
+              </View>
+            )}
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -456,8 +523,17 @@ export default function CreateComplaintScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.modalAddButton}
+                style={[
+                  styles.modalAddButton,
+                  involvedType === "resident" &&
+                    (loadingResidents || !!residentLoadError) &&
+                    styles.buttonDisabled,
+                ]}
                 onPress={addInvolved}
+                disabled={
+                  involvedType === "resident" &&
+                  (loadingResidents || !!residentLoadError)
+                }
               >
                 <Text style={styles.primaryButtonText}>Adicionar</Text>
               </TouchableOpacity>

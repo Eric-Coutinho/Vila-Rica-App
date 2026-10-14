@@ -2,7 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -12,13 +18,14 @@ import {
   View,
 } from "react-native";
 
+import { ApiError, getErrorMessage } from "../../services/api";
 import { listComplaints } from "../../services/complaintService";
 import { getStoredUser } from "../../services/session";
 import {
   COMPLAINT_STATUS_COLOR,
   COMPLAINT_STATUS_LABEL,
-  type Complaint,
   type ComplaintStatus,
+  type ComplaintSummary,
 } from "../../types/complaint";
 import { styles } from "./ComplaintsScreenStyles";
 
@@ -29,94 +36,64 @@ const normalize = (value: string) =>
     .trim()
     .toLowerCase();
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
-    new Date(value),
-  );
+const formatDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data não informada";
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(date);
+};
 
 export default function ComplaintsScreen() {
   const router = useRouter();
+  const requestId = useRef(0);
 
   const [loading, setLoading] = useState(true);
-  const [isManager, setIsManager] = useState(false);
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [isManager, setIsManager] = useState<boolean | null>(null);
+  const [complaints, setComplaints] = useState<ComplaintSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [residentFilter, setResidentFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [numberFilter, setNumberFilter] = useState("");
   const [titleFilter, setTitleFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | ComplaintStatus
-  >("all");
-
-  useFocusEffect(
-    useCallback(() => {
-      let mounted = true;
-
-      async function load() {
-        setLoading(true);
-
-        try {
-          const user = await getStoredUser();
-          const role = normalize(String(user?.role || ""));
-          const manager = ["sindico", "admin", "adm"].includes(role);
-          const result = await listComplaints({ manager });
-
-          if (mounted) {
-            setIsManager(manager);
-            setComplaints(result);
-          }
-        } finally {
-          if (mounted) setLoading(false);
-        }
-      }
-
-      load();
-
-      return () => {
-        mounted = false;
-      };
-    }, []),
+  const [statusFilter, setStatusFilter] = useState<"all" | ComplaintStatus>(
+    "all",
   );
 
-  const filteredComplaints = useMemo(() => {
-    const normalizedResident = normalize(residentFilter);
-    const normalizedTitle = normalize(titleFilter);
-    const normalizedNumber = normalize(numberFilter).replace("#", "");
-    const normalizedDate = dateFilter.replace(/\D/g, "");
+  useEffect(() => {
+    let active = true;
 
-    return complaints.filter((complaint) => {
-      const matchesResident =
-        !isManager ||
-        !normalizedResident ||
-        normalize(complaint.createdBy.name).includes(normalizedResident);
-
-      const matchesDate =
-        !normalizedDate ||
-        formatDate(complaint.occurrenceDate)
-          .replace(/\D/g, "")
-          .includes(normalizedDate);
-
-      const matchesNumber =
-        !normalizedNumber ||
-        complaint.number.replace(/\D/g, "").includes(normalizedNumber);
-
-      const matchesTitle =
-        !normalizedTitle || normalize(complaint.title).includes(normalizedTitle);
-
-      const matchesStatus =
-        statusFilter === "all" || complaint.status === statusFilter;
-
-      return (
-        matchesResident &&
-        matchesDate &&
-        matchesNumber &&
-        matchesTitle &&
-        matchesStatus
-      );
+    getStoredUser().then((user) => {
+      if (!active) return;
+      const role = normalize(String(user?.role || ""));
+      setIsManager(["sindico", "admin", "adm"].includes(role));
     });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const apiFilters = useMemo(() => {
+    const title = titleFilter.trim();
+    const resident = residentFilter.trim();
+    const date = dateFilter.trim();
+
+    return {
+      page: 1,
+      limit: 100,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      date: /^\d{2}\/\d{2}\/\d{4}$/.test(date) ? date : undefined,
+      number: numberFilter.replace(/\D/g, "") || undefined,
+      title: title.length >= 2 ? title : undefined,
+      resident: isManager && resident.length >= 2 ? resident : undefined,
+    };
   }, [
-    complaints,
     dateFilter,
     isManager,
     numberFilter,
@@ -125,10 +102,86 @@ export default function ComplaintsScreen() {
     titleFilter,
   ]);
 
-  if (loading) {
+  useFocusEffect(
+    useCallback(() => {
+      if (isManager === null) return undefined;
+      void reloadKey;
+
+      let active = true;
+      const currentRequest = ++requestId.current;
+      const timer = setTimeout(async () => {
+        setRefreshing(true);
+        setErrorMessage("");
+
+        try {
+          const result = await listComplaints(apiFilters);
+          if (!active || currentRequest !== requestId.current) return;
+          setComplaints(result.complaints);
+          setTotal(result.meta.total);
+          setPage(result.meta.page);
+          setPages(result.meta.pages);
+        } catch (error) {
+          if (!active || currentRequest !== requestId.current) return;
+          setErrorMessage(
+            getErrorMessage(error, "Não foi possível carregar as reclamações."),
+          );
+          if (error instanceof ApiError && error.status === 401) {
+            router.replace("/login");
+          }
+        } finally {
+          if (active && currentRequest === requestId.current) {
+            setLoading(false);
+            setRefreshing(false);
+          }
+        }
+      }, 350);
+
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
+    }, [apiFilters, isManager, reloadKey, router]),
+  );
+
+  const handleLoadMore = async () => {
+    if (loadingMore || page >= pages) return;
+
+    setLoadingMore(true);
+    setErrorMessage("");
+    try {
+      const result = await listComplaints({
+        ...apiFilters,
+        page: page + 1,
+      });
+      setComplaints((current) => {
+        const byId = new Map(
+          current.map((complaint) => [complaint.id, complaint]),
+        );
+        result.complaints.forEach((complaint) =>
+          byId.set(complaint.id, complaint),
+        );
+        return [...byId.values()];
+      });
+      setTotal(result.meta.total);
+      setPage(result.meta.page);
+      setPages(result.meta.pages);
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "Não foi possível carregar mais reclamações."),
+      );
+      if (error instanceof ApiError && error.status === 401) {
+        router.replace("/login");
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  if (loading || isManager === null) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#466CA5" />
+        <Text style={styles.loadingText}>Carregando reclamações...</Text>
       </View>
     );
   }
@@ -224,8 +277,35 @@ export default function ComplaintsScreen() {
           </View>
         </View>
 
+        {refreshing && (
+          <View style={styles.refreshingRow}>
+            <ActivityIndicator size="small" color="#466CA5" />
+            <Text style={styles.refreshingText}>Atualizando...</Text>
+          </View>
+        )}
+
+        {!!errorMessage && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => setReloadKey((value) => value + 1)}
+            >
+              <Text style={styles.retryButtonText}>Tentar novamente</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!errorMessage && (
+          <Text style={styles.resultCount}>
+            {total === 1
+              ? "1 reclamação encontrada"
+              : `${total} reclamações encontradas`}
+          </Text>
+        )}
+
         <View style={styles.list}>
-          {filteredComplaints.map((complaint) => (
+          {complaints.map((complaint) => (
             <View key={complaint.id} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.complaintNumber}>{complaint.number}</Text>
@@ -234,8 +314,7 @@ export default function ComplaintsScreen() {
                   style={[
                     styles.statusDot,
                     {
-                      backgroundColor:
-                        COMPLAINT_STATUS_COLOR[complaint.status],
+                      backgroundColor: COMPLAINT_STATUS_COLOR[complaint.status],
                     },
                   ]}
                 />
@@ -268,24 +347,29 @@ export default function ComplaintsScreen() {
             </View>
           ))}
 
-          {filteredComplaints.length === 0 && (
+          {!errorMessage && complaints.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
                 Nenhuma reclamação encontrada.
               </Text>
             </View>
           )}
+
+          {!errorMessage && page < pages && (
+            <TouchableOpacity
+              style={styles.loadMoreButton}
+              onPress={handleLoadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? (
+                <ActivityIndicator color="#466CA5" />
+              ) : (
+                <Text style={styles.loadMoreButtonText}>Carregar mais</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
-
-      <TouchableOpacity
-        style={styles.chatButton}
-        activeOpacity={0.85}
-        accessibilityLabel="Abrir chatbot"
-        onPress={() => router.push("/chatbot")}
-      >
-        <Ionicons name="chatbubble-ellipses-outline" size={34} color="#fff" />
-      </TouchableOpacity>
     </View>
   );
 }

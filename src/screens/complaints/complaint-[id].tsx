@@ -15,8 +15,10 @@ import {
   View,
 } from "react-native";
 
+import { ApiError, getErrorMessage } from "../../services/api";
 import {
   addComplaintMessage,
+  deleteComplaint,
   getComplaintById,
   updateComplaintStatus,
 } from "../../services/complaintService";
@@ -36,16 +38,22 @@ const normalize = (value: string) =>
     .trim()
     .toLowerCase();
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(
-    new Date(value),
-  );
+const formatDate = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data não informada";
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(date);
+};
 
 const formatMessageTime = (value: string) => {
   const date = new Date(value);
-  const difference = Date.now() - date.getTime();
-  const hours = Math.max(0, Math.floor(difference / 3_600_000));
+  if (Number.isNaN(date.getTime())) return "";
 
+  const difference = Math.max(0, Date.now() - date.getTime());
+  const minutes = Math.floor(difference / 60_000);
+  const hours = Math.floor(difference / 3_600_000);
+
+  if (minutes < 1) return "agora";
+  if (minutes < 60) return `${minutes}min atrás`;
   if (hours < 24) return `${hours}h atrás`;
 
   return date.toLocaleString("pt-BR", {
@@ -59,98 +67,83 @@ const formatMessageTime = (value: string) => {
 
 export default function ComplaintDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const complaintId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [loading, setLoading] = useState(true);
   const [complaint, setComplaint] = useState<Complaint | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const [isManager, setIsManager] = useState(false);
-  const [currentUser, setCurrentUser] = useState({
-    id: "current-resident",
-    name: "Morador",
-  });
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [involvedModalVisible, setInvolvedModalVisible] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<
-    Exclude<ComplaintStatus, "created">
-  >("under_review");
+  const [selectedStatus, setSelectedStatus] =
+    useState<Exclude<ComplaintStatus, "created">>("under_review");
   const [savingStatus, setSavingStatus] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
     async function load() {
       setLoading(true);
+      setErrorMessage("");
 
       try {
-        if (!id) return;
+        if (!complaintId) {
+          throw new ApiError("ID da reclamação não informado.", 400);
+        }
 
         const [user, foundComplaint] = await Promise.all([
           getStoredUser(),
-          getComplaintById(id),
+          getComplaintById(complaintId),
         ]);
-
-        if (!mounted) return;
+        if (!active) return;
 
         const role = normalize(String(user?.role || ""));
         const manager = ["sindico", "admin", "adm"].includes(role);
-
         setIsManager(manager);
-        setCurrentUser({
-          id: user?._id || (manager ? "manager-1" : "current-resident"),
-          name: user?.name || (manager ? "Síndico" : "Morador"),
-        });
         setComplaint(foundComplaint);
-
-        if (foundComplaint?.status === "closed") {
-          setSelectedStatus("closed");
-        } else {
-          setSelectedStatus("under_review");
+        setSelectedStatus(
+          foundComplaint.status === "closed" ? "closed" : "under_review",
+        );
+      } catch (error) {
+        if (!active) return;
+        setErrorMessage(
+          getErrorMessage(error, "Não foi possível carregar a reclamação."),
+        );
+        if (error instanceof ApiError && error.status === 401) {
+          router.replace("/login");
         }
       } finally {
-        if (mounted) setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
-    load();
-
+    void load();
     return () => {
-      mounted = false;
+      active = false;
     };
-  }, [id]);
+  }, [complaintId, router]);
 
   const handleAddResponse = async () => {
     const text = reply.trim();
-
-    if (!complaint || !text) return;
+    if (!complaint || !text || complaint.status === "closed") return;
 
     setSending(true);
-
     try {
-      const created = await addComplaintMessage(complaint.id, {
-        authorId: currentUser.id,
-        authorName: isManager ? "Síndico" : currentUser.name,
-        authorRole: isManager ? "manager" : "resident",
-        text,
-      });
-
-      setComplaint((current) =>
-        current
-          ? {
-              ...current,
-              messages: [...current.messages, created],
-            }
-          : current,
-      );
+      const updated = await addComplaintMessage(complaint.id, text);
+      setComplaint(updated);
       setReply("");
     } catch (error) {
       Alert.alert(
         "Erro",
-        error instanceof Error
-          ? error.message
-          : "Não foi possível adicionar a resposta.",
+        getErrorMessage(error, "Não foi possível adicionar a resposta."),
       );
+      if (error instanceof ApiError && error.status === 401) {
+        router.replace("/login");
+      }
     } finally {
       setSending(false);
     }
@@ -160,30 +153,61 @@ export default function ComplaintDetailScreen() {
     if (!complaint || !isManager) return;
 
     setSavingStatus(true);
-
     try {
-      const updated = await updateComplaintStatus(
-        complaint.id,
-        selectedStatus,
-      );
+      const updated = await updateComplaintStatus(complaint.id, selectedStatus);
       setComplaint(updated);
       setStatusModalVisible(false);
     } catch (error) {
       Alert.alert(
         "Erro",
-        error instanceof Error
-          ? error.message
-          : "Não foi possível atualizar o status.",
+        getErrorMessage(error, "Não foi possível atualizar o status."),
       );
     } finally {
       setSavingStatus(false);
     }
   };
 
+  const confirmDelete = () => {
+    if (!complaint || isManager || deleting) return;
+
+    const remove = async () => {
+      setDeleting(true);
+      try {
+        await deleteComplaint(complaint.id);
+        Alert.alert("Sucesso", "Reclamação excluída.");
+        router.replace("/complaints");
+      } catch (error) {
+        Alert.alert(
+          "Erro",
+          getErrorMessage(error, "Não foi possível excluir a reclamação."),
+        );
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (globalThis.confirm("Deseja realmente excluir esta reclamação?")) {
+        void remove();
+      }
+      return;
+    }
+
+    Alert.alert(
+      "Excluir reclamação",
+      "Deseja realmente excluir esta reclamação?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Excluir", style: "destructive", onPress: () => void remove() },
+      ],
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#466CA5" />
+        <Text style={styles.loadingText}>Carregando reclamação...</Text>
       </View>
     );
   }
@@ -191,7 +215,9 @@ export default function ComplaintDetailScreen() {
   if (!complaint) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.notFoundText}>Reclamação não encontrada.</Text>
+        <Text style={styles.notFoundText}>
+          {errorMessage || "Reclamação não encontrada."}
+        </Text>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.replace("/complaints")}
@@ -201,6 +227,8 @@ export default function ComplaintDetailScreen() {
       </View>
     );
   }
+
+  const closed = complaint.status === "closed";
 
   return (
     <KeyboardAvoidingView
@@ -223,9 +251,7 @@ export default function ComplaintDetailScreen() {
           <View
             style={[
               styles.statusDot,
-              {
-                backgroundColor: COMPLAINT_STATUS_COLOR[complaint.status],
-              },
+              { backgroundColor: COMPLAINT_STATUS_COLOR[complaint.status] },
             ]}
           />
 
@@ -234,9 +260,7 @@ export default function ComplaintDetailScreen() {
               style={styles.editStatusButton}
               accessibilityLabel="Alterar status"
               onPress={() => {
-                setSelectedStatus(
-                  complaint.status === "closed" ? "closed" : "under_review",
-                );
+                setSelectedStatus(closed ? "closed" : "under_review");
                 setStatusModalVisible(true);
               }}
             >
@@ -252,9 +276,7 @@ export default function ComplaintDetailScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="person-circle-outline" size={31} color="#222" />
             <View style={styles.infoTextContainer}>
-              <Text style={styles.infoText}>
-                {complaint.createdBy.name}
-              </Text>
+              <Text style={styles.infoText}>{complaint.createdBy.name}</Text>
               <Text style={styles.infoText}>
                 Bloco {complaint.createdBy.bloco}
               </Text>
@@ -308,13 +330,6 @@ export default function ComplaintDetailScreen() {
               </View>
 
               <Text style={styles.messageText}>{message.text}</Text>
-
-              <Ionicons
-                name="return-down-back-outline"
-                size={22}
-                color="#222"
-                style={styles.messageReplyIcon}
-              />
             </View>
           ))}
 
@@ -325,39 +340,59 @@ export default function ComplaintDetailScreen() {
           )}
         </View>
 
-        <TextInput
-          style={styles.replyInput}
-          value={reply}
-          onChangeText={setReply}
-          placeholder="Responder..."
-          placeholderTextColor="#aaa"
-          multiline
-          textAlignVertical="top"
-          maxLength={500}
-        />
+        {closed ? (
+          <View style={styles.closedNotice}>
+            <Ionicons name="lock-closed-outline" size={19} color="#555" />
+            <Text style={styles.closedNoticeText}>
+              Esta reclamação foi encerrada e não aceita novas respostas.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <TextInput
+              style={styles.replyInput}
+              value={reply}
+              onChangeText={setReply}
+              placeholder="Responder..."
+              placeholderTextColor="#aaa"
+              multiline
+              textAlignVertical="top"
+              maxLength={500}
+            />
+            <Text style={styles.replyCounter}>{reply.length}/500</Text>
 
-        <TouchableOpacity
-          style={styles.addResponseButton}
-          activeOpacity={0.85}
-          onPress={handleAddResponse}
-          disabled={sending || !reply.trim()}
-        >
-          {sending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Adicionar resposta</Text>
-          )}
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.addResponseButton,
+                (sending || !reply.trim()) && styles.buttonDisabled,
+              ]}
+              activeOpacity={0.85}
+              onPress={handleAddResponse}
+              disabled={sending || !reply.trim()}
+            >
+              {sending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Adicionar resposta</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+
+        {!isManager && (
+          <TouchableOpacity
+            style={[styles.deleteButton, deleting && styles.buttonDisabled]}
+            onPress={confirmDelete}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Excluir reclamação</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </ScrollView>
-
-      <TouchableOpacity
-        style={styles.chatButton}
-        activeOpacity={0.85}
-        accessibilityLabel="Abrir chatbot"
-        onPress={() => router.push("/chatbot")}
-      >
-        <Ionicons name="chatbubble-ellipses-outline" size={34} color="#fff" />
-      </TouchableOpacity>
 
       <Modal
         visible={involvedModalVisible}
@@ -482,7 +517,10 @@ export default function ComplaintDetailScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.statusSaveButton}
+                style={[
+                  styles.statusSaveButton,
+                  savingStatus && styles.buttonDisabled,
+                ]}
                 onPress={handleSaveStatus}
                 disabled={savingStatus}
               >

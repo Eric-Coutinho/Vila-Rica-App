@@ -2,6 +2,7 @@ export type ComplaintStatus = "created" | "under_review" | "closed";
 
 export type ComplaintPerson = {
   id: string;
+  _id?: string;
   name: string;
 };
 
@@ -18,6 +19,7 @@ export type ComplaintInvolved = {
 
 export type ComplaintMessage = {
   id: string;
+  _id?: string;
   authorId: string;
   authorName: string;
   authorRole: "resident" | "manager";
@@ -25,14 +27,20 @@ export type ComplaintMessage = {
   createdAt: string;
 };
 
-export type Complaint = {
+export type ComplaintSummary = {
   id: string;
+  _id?: string;
   number: string;
   title: string;
-  description: string;
   occurrenceDate: string;
-  createdAt: string;
   status: ComplaintStatus;
+  createdBy: ComplaintPerson;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Complaint = ComplaintSummary & {
+  description: string;
   createdBy: ComplaintPerson & {
     bloco: string;
     apartamento: string;
@@ -40,22 +48,40 @@ export type Complaint = {
   involved: ComplaintInvolved;
   messages: ComplaintMessage[];
   useDefaultContact: boolean;
-  contactEmail?: string;
-  contactPhone?: string;
-  mine?: boolean;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
 };
 
-export type CreateComplaintInput = Pick<
-  Complaint,
-  | "title"
-  | "description"
-  | "occurrenceDate"
-  | "involved"
-  | "useDefaultContact"
-  | "contactEmail"
-  | "contactPhone"
-> & {
-  createdBy: Complaint["createdBy"];
+export type CreateComplaintInput = {
+  title: string;
+  description: string;
+  occurrenceDate: string;
+  involved: ComplaintInvolved;
+  useDefaultContact: boolean;
+  contactEmail?: string;
+  contactPhone?: string;
+};
+
+export type ComplaintListFilters = {
+  page?: number;
+  limit?: number;
+  status?: ComplaintStatus;
+  date?: string;
+  number?: string;
+  title?: string;
+  resident?: string;
+};
+
+export type ComplaintPagination = {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+};
+
+export type ComplaintResidentOption = ComplaintPerson & {
+  bloco?: string;
+  apartamento?: string;
 };
 
 export const COMPLAINT_STATUS_LABEL: Record<ComplaintStatus, string> = {

@@ -20,6 +20,11 @@ export const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 24,
   },
+  loadingText: {
+    color: "#555",
+    fontSize: 15,
+    marginTop: 12,
+  },
   notFoundText: {
     color: "#333",
     fontSize: 17,
@@ -167,6 +172,23 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 18,
   },
+  closedNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#d5d5d5",
+    borderRadius: 6,
+    backgroundColor: "#f3f3f3",
+    padding: 12,
+    marginTop: 9,
+  },
+  closedNoticeText: {
+    flex: 1,
+    color: "#555",
+    fontSize: 13,
+    lineHeight: 18,
+    marginLeft: 8,
+  },
   replyInput: {
     width: "100%",
     minHeight: 115,
@@ -179,6 +201,12 @@ export const styles = StyleSheet.create({
     padding: 10,
     marginTop: 8,
   },
+  replyCounter: {
+    alignSelf: "flex-end",
+    color: "#777",
+    fontSize: 11,
+    marginTop: 3,
+  },
   addResponseButton: {
     width: "100%",
     minHeight: 44,
@@ -187,6 +215,18 @@ export const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#466CA5",
     marginTop: 13,
+  },
+  deleteButton: {
+    width: "100%",
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+    backgroundColor: "#B44A4A",
+    marginTop: 13,
+  },
+  buttonDisabled: {
+    opacity: 0.55,
   },
   backButton: {
     minWidth: 140,

@@ -1,183 +1,218 @@
+import { ApiError, apiFetch } from "./api";
 import type {
   Complaint,
-  ComplaintMessage,
+  ComplaintListFilters,
+  ComplaintPagination,
+  ComplaintResidentOption,
   ComplaintStatus,
+  ComplaintSummary,
   CreateComplaintInput,
 } from "../types/complaint";
 
-// Enquanto a API de reclamações não estiver pronta, as telas usam este
-// repositório em memória. Depois, somente as funções deste arquivo precisam
-// ser trocadas por apiFetch; os componentes podem permanecer iguais.
-let complaints: Complaint[] = [
-  {
-    id: "complaint-2131239231",
-    number: "#2131239231",
-    title: "Crianças correndo no pátio após as 22h",
-    description:
-      "Ontem por volta das 22 horas vi algumas crianças correndo no pátio, algumas delas estavam gritando, mas não consegui ver os rostos.",
-    occurrenceDate: "2024-10-07T12:00:00.000Z",
-    createdAt: "2024-10-07T12:00:00.000Z",
-    status: "created",
-    createdBy: {
-      id: "current-resident",
-      name: "Morador",
-      bloco: "7",
-      apartamento: "23",
-    },
-    involved: {
-      residents: [
-        { id: "resident-1", name: "Morador 1" },
-        { id: "resident-2", name: "Morador 2" },
-        { id: "resident-3", name: "Morador 3" },
-      ],
-      apartments: [
-        { id: "apartment-23-7", apartamento: "23", bloco: "7" },
-        { id: "apartment-24-7", apartamento: "24", bloco: "7" },
-      ],
-    },
-    messages: [
-      {
-        id: "message-1",
-        authorId: "manager-1",
-        authorName: "Síndico",
-        authorRole: "manager",
-        text: "Vamos checar nas câmeras quais são as crianças e logo em seguida advertir seus responsáveis.\n\nObrigado pelo aviso.",
-        createdAt: "2024-10-07T15:00:00.000Z",
-      },
-    ],
-    useDefaultContact: true,
-    mine: true,
-  },
-  {
-    id: "complaint-2131239232",
-    number: "#2131239232",
-    title: "Barulho excessivo no apartamento vizinho",
-    description:
-      "O apartamento vizinho está com música alta durante a madrugada.",
-    occurrenceDate: "2024-10-09T02:00:00.000Z",
-    createdAt: "2024-10-09T09:00:00.000Z",
-    status: "under_review",
-    createdBy: {
-      id: "current-resident",
-      name: "Morador",
-      bloco: "7",
-      apartamento: "23",
-    },
-    involved: {
-      residents: [],
-      apartments: [
-        { id: "apartment-24-7", apartamento: "24", bloco: "7" },
-      ],
-    },
-    messages: [],
-    useDefaultContact: true,
-    mine: true,
-  },
-  {
-    id: "complaint-2131239233",
-    number: "#2131239233",
-    title: "Portão da garagem aberto",
-    description:
-      "O portão da garagem permaneceu aberto por um período longo durante a noite.",
-    occurrenceDate: "2024-10-12T23:00:00.000Z",
-    createdAt: "2024-10-13T08:00:00.000Z",
-    status: "closed",
-    createdBy: {
-      id: "current-resident",
-      name: "Morador",
-      bloco: "7",
-      apartamento: "23",
-    },
-    involved: { residents: [], apartments: [] },
-    messages: [],
-    useDefaultContact: true,
-    mine: true,
-  },
-  {
-    id: "complaint-2131239234",
-    number: "#2131239234",
-    title: "Objeto deixado no corredor",
-    description: "Há um objeto bloqueando parte do corredor do terceiro andar.",
-    occurrenceDate: "2024-10-14T10:00:00.000Z",
-    createdAt: "2024-10-14T10:30:00.000Z",
-    status: "under_review",
-    createdBy: {
-      id: "resident-4",
-      name: "Morador 4",
-      bloco: "3",
-      apartamento: "12",
-    },
-    involved: { residents: [], apartments: [] },
-    messages: [],
-    useDefaultContact: false,
-    contactEmail: "morador4@example.com",
-    contactPhone: "41912345678",
-    mine: false,
-  },
-];
+type ErrorResponse = {
+  ok?: boolean;
+  message?: string;
+};
 
-const cloneComplaint = (complaint: Complaint): Complaint =>
-  JSON.parse(JSON.stringify(complaint)) as Complaint;
+type ComplaintResponse = ErrorResponse & {
+  complaint?: Complaint;
+};
 
-export async function listComplaints(options: {
-  manager: boolean;
-}): Promise<Complaint[]> {
-  const visible = options.manager
-    ? complaints
-    : complaints.filter((complaint) => complaint.mine);
+type ComplaintListResponse = ErrorResponse & {
+  complaints?: ComplaintSummary[];
+  meta?: ComplaintPagination;
+};
 
-  return visible.map(cloneComplaint);
+type UsersResponse = ErrorResponse & {
+  users?: {
+    _id: string;
+    name?: string;
+    bloco?: string;
+    apartamento?: string;
+  }[];
+};
+
+async function parseJson<T>(response: Response): Promise<T> {
+  return response.json().catch(() => ({}) as T);
 }
 
-export async function getComplaintById(
-  id: string,
-): Promise<Complaint | null> {
-  const complaint = complaints.find((item) => item.id === id);
-  return complaint ? cloneComplaint(complaint) : null;
+function ensureSuccess(
+  response: Response,
+  data: ErrorResponse,
+  fallback: string,
+): void {
+  if (!response.ok || data.ok === false) {
+    throw new ApiError(data.message || fallback, response.status);
+  }
+}
+
+function buildQuery(filters: ComplaintListFilters): string {
+  const params = new URLSearchParams();
+
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.limit) params.set("limit", String(filters.limit));
+  if (filters.status) params.set("status", filters.status);
+  if (filters.date?.trim()) params.set("date", filters.date.trim());
+  if (filters.number?.trim()) params.set("number", filters.number.trim());
+  if (filters.title?.trim()) params.set("title", filters.title.trim());
+  if (filters.resident?.trim()) params.set("resident", filters.resident.trim());
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function listComplaints(
+  filters: ComplaintListFilters = {},
+): Promise<{
+  complaints: ComplaintSummary[];
+  meta: ComplaintPagination;
+}> {
+  const response = await apiFetch(
+    `/complaints${buildQuery(filters)}`,
+    { method: "GET" },
+    true,
+  );
+  const data = await parseJson<ComplaintListResponse>(response);
+  ensureSuccess(response, data, "Não foi possível carregar as reclamações.");
+
+  return {
+    complaints: data.complaints ?? [],
+    meta: data.meta ?? {
+      total: data.complaints?.length ?? 0,
+      page: filters.page ?? 1,
+      limit: filters.limit ?? 20,
+      pages: 1,
+    },
+  };
+}
+
+export async function getComplaintById(id: string): Promise<Complaint> {
+  const response = await apiFetch(
+    `/complaints/${encodeURIComponent(id)}`,
+    { method: "GET" },
+    true,
+  );
+  const data = await parseJson<ComplaintResponse>(response);
+  ensureSuccess(response, data, "Não foi possível carregar a reclamação.");
+
+  if (!data.complaint) {
+    throw new ApiError("Reclamação não encontrada.", 404);
+  }
+
+  return data.complaint;
 }
 
 export async function createComplaint(
   input: CreateComplaintInput,
 ): Promise<Complaint> {
-  const numericPart = String(Date.now()).slice(-10);
-  const complaint: Complaint = {
-    ...input,
-    id: `complaint-${numericPart}`,
-    number: `#${numericPart}`,
-    createdAt: new Date().toISOString(),
-    status: "created",
-    messages: [],
-    mine: true,
+  const payload = {
+    title: input.title,
+    description: input.description,
+    occurrenceDate: input.occurrenceDate,
+    involvedResidentIds: input.involved.residents.map(
+      (resident) => resident.id,
+    ),
+    involvedApartments: input.involved.apartments.map((apartment) => ({
+      bloco: apartment.bloco,
+      apartamento: apartment.apartamento,
+    })),
+    useDefaultContact: input.useDefaultContact,
+    ...(input.useDefaultContact
+      ? {}
+      : {
+          contactEmail: input.contactEmail,
+          contactPhone: input.contactPhone,
+        }),
   };
 
-  complaints = [complaint, ...complaints];
-  return cloneComplaint(complaint);
+  const response = await apiFetch(
+    "/complaints",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    true,
+  );
+  const data = await parseJson<ComplaintResponse>(response);
+  ensureSuccess(response, data, "Não foi possível registrar a reclamação.");
+
+  if (!data.complaint) {
+    throw new ApiError("A API não retornou a reclamação criada.", 500);
+  }
+
+  return data.complaint;
 }
 
 export async function addComplaintMessage(
   complaintId: string,
-  message: Omit<ComplaintMessage, "id" | "createdAt">,
-): Promise<ComplaintMessage> {
-  const complaint = complaints.find((item) => item.id === complaintId);
-  if (!complaint) throw new Error("Reclamação não encontrada.");
+  text: string,
+): Promise<Complaint> {
+  const response = await apiFetch(
+    `/complaints/${encodeURIComponent(complaintId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    },
+    true,
+  );
+  const data = await parseJson<ComplaintResponse>(response);
+  ensureSuccess(response, data, "Não foi possível adicionar a resposta.");
 
-  const created: ComplaintMessage = {
-    ...message,
-    id: `message-${Date.now()}`,
-    createdAt: new Date().toISOString(),
-  };
+  if (!data.complaint) {
+    throw new ApiError("A API não retornou a reclamação atualizada.", 500);
+  }
 
-  complaint.messages.push(created);
-  return { ...created };
+  return data.complaint;
 }
 
 export async function updateComplaintStatus(
   complaintId: string,
   status: Exclude<ComplaintStatus, "created">,
 ): Promise<Complaint> {
-  const complaint = complaints.find((item) => item.id === complaintId);
-  if (!complaint) throw new Error("Reclamação não encontrada.");
+  const response = await apiFetch(
+    `/complaints/${encodeURIComponent(complaintId)}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    },
+    true,
+  );
+  const data = await parseJson<ComplaintResponse>(response);
+  ensureSuccess(response, data, "Não foi possível atualizar o status.");
 
-  complaint.status = status;
-  return cloneComplaint(complaint);
+  if (!data.complaint) {
+    throw new ApiError("A API não retornou a reclamação atualizada.", 500);
+  }
+
+  return data.complaint;
+}
+
+export async function deleteComplaint(complaintId: string): Promise<void> {
+  const response = await apiFetch(
+    `/complaints/${encodeURIComponent(complaintId)}`,
+    { method: "DELETE" },
+    true,
+  );
+  const data = await parseJson<ErrorResponse>(response);
+  ensureSuccess(response, data, "Não foi possível excluir a reclamação.");
+}
+
+export async function listComplaintResidents(): Promise<
+  ComplaintResidentOption[]
+> {
+  const response = await apiFetch(
+    "/auth/list-users?role=morador&limit=200",
+    { method: "GET" },
+    true,
+  );
+  const data = await parseJson<UsersResponse>(response);
+  ensureSuccess(response, data, "Não foi possível carregar os moradores.");
+
+  return (data.users ?? []).map((user) => ({
+    id: user._id,
+    _id: user._id,
+    name: user.name || "Morador",
+    bloco: user.bloco,
+    apartamento: user.apartamento,
+  }));
 }

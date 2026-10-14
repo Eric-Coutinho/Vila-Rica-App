@@ -145,6 +145,9 @@ export const styles = StyleSheet.create({
     backgroundColor: "#ededed",
     color: "#777",
   },
+  buttonDisabled: {
+    opacity: 0.55,
+  },
   submitButton: {
     minHeight: 44,
     alignItems: "center",
@@ -200,6 +203,42 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: 42,
     color: "#111",
+  },
+  apartmentFields: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  apartmentField: {
+    flex: 1,
+  },
+  modalLoading: {
+    minHeight: 70,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalLoadingText: {
+    color: "#555",
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  modalErrorBox: {
+    borderWidth: 1,
+    borderColor: "#e2b6b6",
+    borderRadius: 5,
+    backgroundColor: "#fff4f4",
+    padding: 10,
+  },
+  modalErrorText: {
+    color: "#8a2424",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  tryAgainText: {
+    color: "#315f9f",
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 7,
   },
   modalActions: {
     flexDirection: "row",
