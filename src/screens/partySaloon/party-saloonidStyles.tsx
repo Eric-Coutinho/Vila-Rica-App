@@ -352,6 +352,26 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
 
+  modalDateInput: {
+    width: "100%",
+    height: 42,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#8a8a8a",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    backgroundColor: "#fff",
+  },
+
+  modalDateInputText: {
+    color: "#111",
+    fontSize: 16,
+  },
+
+  modalDatePlaceholder: {
+    color: "#777",
+  },
+
   modalActions: {
     flexDirection: "row",
     justifyContent: "flex-end",

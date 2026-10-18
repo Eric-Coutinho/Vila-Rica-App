@@ -1,8 +1,10 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -59,6 +61,20 @@ function formatCpf(value: string) {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 }
 
+function formatDatePayload(value: Date | null) {
+  if (!value) return "";
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function formatSelectedDate(value: Date | null) {
+  if (!value) return "Selecione uma data";
+  return new Intl.DateTimeFormat("pt-BR").format(value);
+}
+
 export default function PartySaloonDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
@@ -70,7 +86,9 @@ export default function PartySaloonDetailScreen() {
   const [guestModalVisible, setGuestModalVisible] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [guestCpf, setGuestCpf] = useState("");
-  const [guestBirthDate, setGuestBirthDate] = useState("");
+  const [guestBirthDate, setGuestBirthDate] = useState<Date | null>(null);
+  const [showGuestBirthDatePicker, setShowGuestBirthDatePicker] =
+    useState(false);
   const [messageModal, setMessageModal] = useState<MessageModalState>({
     visible: false,
     title: "",
@@ -192,10 +210,10 @@ export default function PartySaloonDetailScreen() {
     if (cpf.length !== 11) {
       return showMessage("CPF inválido", "Informe os 11 números do CPF.");
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(guestBirthDate)) {
+    if (!guestBirthDate) {
       return showMessage(
         "Data inválida",
-        "Informe a data de nascimento no formato AAAA-MM-DD.",
+        "Selecione a data de nascimento do convidado.",
       );
     }
 
@@ -204,14 +222,14 @@ export default function PartySaloonDetailScreen() {
         addReservationGuest(reservationId, {
           name: guestName.trim(),
           cpf,
-          birthDate: guestBirthDate,
+          birthDate: formatDatePayload(guestBirthDate),
         }),
       "Convidado adicionado com sucesso.",
     );
     if (!added) return;
     setGuestName("");
     setGuestCpf("");
-    setGuestBirthDate("");
+    setGuestBirthDate(null);
     setGuestModalVisible(false);
   }
 
@@ -471,13 +489,59 @@ export default function PartySaloonDetailScreen() {
               maxLength={14}
             />
             <Text style={styles.inputLabel}>Data de nascimento</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={guestBirthDate}
-              onChangeText={setGuestBirthDate}
-              placeholder="AAAA-MM-DD"
-              maxLength={10}
-            />
+            {Platform.OS === "web" ? (
+              <input
+                type="date"
+                value={formatDatePayload(guestBirthDate)}
+                max={formatDatePayload(new Date())}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (!value) return setGuestBirthDate(null);
+                  const [year, month, day] = value.split("-").map(Number);
+                  setGuestBirthDate(new Date(year, month - 1, day));
+                }}
+                style={{
+                  boxSizing: "border-box",
+                  width: "100%",
+                  height: 42,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderStyle: "solid",
+                  borderColor: "#8a8a8a",
+                  borderRadius: 5,
+                  backgroundColor: "#fff",
+                  fontSize: 16,
+                }}
+              />
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.modalDateInput}
+                  onPress={() => setShowGuestBirthDatePicker(true)}
+                >
+                  <Text
+                    style={[
+                      styles.modalDateInputText,
+                      !guestBirthDate && styles.modalDatePlaceholder,
+                    ]}
+                  >
+                    {formatSelectedDate(guestBirthDate)}
+                  </Text>
+                </TouchableOpacity>
+                {showGuestBirthDatePicker && (
+                  <DateTimePicker
+                    value={guestBirthDate ?? new Date()}
+                    mode="date"
+                    display="default"
+                    maximumDate={new Date()}
+                    onChange={(_event, selectedDate) => {
+                      setShowGuestBirthDatePicker(false);
+                      if (selectedDate) setGuestBirthDate(selectedDate);
+                    }}
+                  />
+                )}
+              </>
+            )}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.secondaryModalButton}
