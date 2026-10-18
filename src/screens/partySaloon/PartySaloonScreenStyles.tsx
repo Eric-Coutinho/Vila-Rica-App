@@ -12,6 +12,11 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  loadingText: {
+    marginTop: 12,
+    color: "#333",
+    fontSize: 16,
+  },
 
   headerTitle: {
     fontSize: 20,
@@ -37,8 +42,12 @@ export const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   inputSmallWrap: {
-    width: "49%",
+    flex: 1,
     marginRight: 8,
+    marginBottom: 8,
+  },
+  inputSmallWrapLast: {
+    flex: 1,
     marginBottom: 8,
   },
   smallLabel: {
@@ -55,17 +64,18 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: Platform.OS === "web" ? 8 : 6,
   },
-  selectSmall: {
+  pickerWrapper: {
     borderWidth: 1,
     borderColor: "#747474",
     borderRadius: 4,
-    paddingVertical: Platform.OS === "web" ? 8 : 6,
-    paddingHorizontal: 8,
     backgroundColor: "#fff",
+    height: 39,
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  selectSmallText: {
-    color: "#000",
-    fontSize: 14,
+  picker: {
+    width: "100%",
+    height: 39,
   },
 
   avisoCard: {
@@ -94,6 +104,12 @@ export const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 14,
+    color: "#444",
+    fontWeight: "600",
+    marginTop: 4,
   },
   avisoDate: {
     fontSize: 16,
@@ -124,6 +140,15 @@ export const styles = StyleSheet.create({
   emptyBox: {
     padding: 18,
     alignItems: "center",
+  },
+  listContainer: {
+    marginTop: 22,
+  },
+  errorText: {
+    color: "#b42318",
+    fontSize: 15,
+    textAlign: "center",
+    marginTop: 18,
   },
 
   bellFab: {

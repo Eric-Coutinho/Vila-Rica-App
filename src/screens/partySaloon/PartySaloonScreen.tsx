@@ -1,6 +1,7 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { Picker } from "@react-native-picker/picker";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -11,253 +12,148 @@ import {
   View,
 } from "react-native";
 
-import { styles } from "./PartySaloonScreenStyles";
-import { apiFetch } from "@/src/services/api";
+import { listPartySaloonReservations } from "@/src/services/reservationService";
 import { getStoredUser } from "@/src/services/session";
+import {
+  RESERVATION_STATUS_COLOR,
+  RESERVATION_STATUS_LABEL,
+  RESERVATION_STATUS_OPTIONS,
+  ReservationStatus,
+  ReservationSummary,
+} from "@/src/types/reservations";
+import { styles } from "./PartySaloonScreenStyles";
 
-type Reservation = {
-  id: string;
-  type: "party_saloon" | "move";
-  date: string;
-  time: string;
-  occasion: string;
-  status: "active" | "closed";
+type StatusFilter = "all" | ReservationStatus;
 
-  reservedBy: {
-    email: string;
-    name: string;
-    apartamento: string;
-    bloco: string;
-  };
+function formatDate(value?: string) {
+  if (!value) return "";
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
 
-  guests: {
-    name: string;
-    cpf: string;
-    birthDate: string;
-  }[];
-};
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? ""
+    : new Intl.DateTimeFormat("pt-BR").format(parsed);
+}
+
+function formatFilterDate(value: Date | null) {
+  if (!value) return "";
+  return [
+    String(value.getDate()).padStart(2, "0"),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    value.getFullYear(),
+  ].join("/");
+}
 
 export default function PartySaloonScreen() {
   const router = useRouter();
-
   const [loading, setLoading] = useState(true);
-  const [isSindico, setIsSindico] = useState(false);
-
+  const [isManager, setIsManager] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [filterReservedBy, setFilterReservedBy] = useState("");
   const [filterDate, setFilterDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string | null>(null);
-
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
+  const [reservations, setReservations] = useState<ReservationSummary[]>([]);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadUserRole() {
-      try {
-        const userObj = await getStoredUser();
-
-        if (!mounted) return;
-
-        if (userObj?.role) {
-          const role = String(userObj.role)
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
-
-          setIsSindico(["sindico", "admin", "adm"].includes(role));
-        } else {
-          setIsSindico(false);
-        }
-      } catch (err) {
-        console.warn("Erro ao ler user do storage:", err);
-
-        if (mounted) {
-          setIsSindico(false);
-        }
-      }
-    }
-
-    loadUserRole();
-
+    let active = true;
+    getStoredUser()
+      .then((user) => {
+        if (!active) return;
+        const role = String(user?.role || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+        setIsManager(["sindico", "admin", "adm"].includes(role));
+      })
+      .catch(() => active && setIsManager(false));
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function fetchReservations() {
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
       setLoading(true);
+      setErrorMessage("");
 
-      try {
-        const res = await apiFetch(
-          "/reservation/list-reservations/party_saloon",
-          {
-            method: "GET",
-          },
-          true,
-        );
-
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
-
-          console.warn("Falha ao buscar reservas:", res.status, errBody);
-
-          if (!mounted) return;
-
+      listPartySaloonReservations()
+        .then((items) => active && setReservations(items))
+        .catch((error) => {
+          if (!active) return;
           setReservations([]);
-          return;
-        }
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível carregar as reservas.",
+          );
+        })
+        .finally(() => active && setLoading(false));
 
-        const body = await res.json().catch(() => ({}));
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
-        const reservationsArray: any[] = Array.isArray(body)
-          ? body
-          : body.reservations || body.data || [];
+  const filtered = useMemo(
+    () =>
+      reservations.filter((reservation) => {
+        const byResident =
+          !filterReservedBy.trim() ||
+          reservation.reservedBy.name
+            .toLowerCase()
+            .includes(filterReservedBy.trim().toLowerCase());
+        const byDate =
+          !filterDate ||
+          formatDate(reservation.date) === formatFilterDate(filterDate);
+        const byStatus =
+          filterStatus === "all" || reservation.status === filterStatus;
+        return byResident && byDate && byStatus;
+      }),
+    [filterDate, filterReservedBy, filterStatus, reservations],
+  );
 
-        const mapped: Reservation[] = reservationsArray.map((r: any) => ({
-          id: String(r._id || r.id || ""),
+  const onChangeDate = (_event: unknown, selected?: Date) => {
+    setShowDatePicker(Platform.OS === "ios");
+    if (selected) setFilterDate(selected);
+  };
 
-          type: r.type,
-
-          date: r.date || "",
-
-          time: r.time || "",
-
-          occasion: r.occasion || "Sem ocasião",
-
-          status: r.status === "closed" ? "closed" : "active",
-
-          reservedBy: {
-            email: r.reservedBy?.email || "",
-            name: r.reservedBy?.name || "Usuário não informado",
-            apartamento: r.reservedBy?.apartamento || "",
-            bloco: r.reservedBy?.bloco || "",
-          },
-
-          guests: Array.isArray(r.guests) ? r.guests : [],
-        }));
-
-        if (!mounted) return;
-
-        setReservations(mapped);
-      } catch (err) {
-        console.error("Erro ao buscar reservas:", err);
-
-        if (!mounted) return;
-
-        setReservations([]);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchReservations();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const onChangeDateWeb = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (!value) return setFilterDate(null);
+    const [year, month, day] = value.split("-").map(Number);
+    setFilterDate(new Date(year, month - 1, day));
+  };
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator size="large" color="#466CA5" />
+        <Text style={styles.loadingText}>Buscando reservas...</Text>
       </View>
     );
   }
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "";
-
-    const date = new Date(dateString);
-
-    if (isNaN(date.valueOf())) {
-      return "";
-    }
-
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-
-    return `${dd}/${mm}/${yyyy}`;
-  };
-
-  const formatFilterDate = (date: Date | null) => {
-    if (!date) return "";
-
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-
-    return `${dd}/${mm}/${yyyy}`;
-  };
-
-  const onChangeDate = (event: any, selected?: Date) => {
-    setShowDatePicker(Platform.OS === "ios");
-
-    if (selected) {
-      setFilterDate(selected);
-    }
-  };
-
-  const onChangeDateWeb = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-
-    if (!value) {
-      setFilterDate(null);
-      return;
-    }
-
-    const [year, month, day] = value.split("-").map(Number);
-
-    const date = new Date(year, month - 1, day);
-
-    setFilterDate(date);
-  };
-
-  const filtered = reservations.filter((reservation) => {
-    const formattedDate = formatDate(reservation.date);
-
-    const byReservedBy =
-      filterReservedBy.trim() === "" ||
-      reservation.reservedBy.name
-        .toLowerCase()
-        .includes(filterReservedBy.toLowerCase());
-
-    const byDate =
-      !filterDate || formattedDate === formatFilterDate(filterDate);
-
-    const byStatus =
-      !filterStatus || filterStatus === "all"
-        ? true
-        : reservation.status === filterStatus;
-
-    return byReservedBy && byDate && byStatus;
-  });
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <Text style={styles.headerTitle}>Salão de Festas</Text>
 
-      <TouchableOpacity
-        style={styles.newNoticeButton}
-        activeOpacity={0.85}
-        onPress={() => {
-          router.push("/create-party-saloon-reservation");
-        }}
-      >
-        <Text style={styles.newNoticeButtonText}>Nova Reserva</Text>
-      </TouchableOpacity>
+      {!isManager && (
+        <TouchableOpacity
+          style={styles.newNoticeButton}
+          activeOpacity={0.85}
+          onPress={() => router.push("/create-party-saloon-reservation")}
+        >
+          <Text style={styles.newNoticeButtonText}>Nova Reserva</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.filtersRow}>
         <View style={styles.inputSmallWrap}>
           <Text style={styles.smallLabel}>Data</Text>
-
           {Platform.OS === "web" ? (
             <input
               type="date"
@@ -275,14 +171,14 @@ export default function PartySaloonScreen() {
               style={{
                 boxSizing: "border-box",
                 width: "100%",
-                height: 37,
-                padding: 12,
+                height: 39,
+                padding: 8,
                 borderWidth: 1,
                 borderStyle: "solid",
                 borderColor: "#747474",
                 borderRadius: 4,
                 backgroundColor: "#fff",
-                fontSize: 16,
+                fontSize: 14,
               }}
             />
           ) : (
@@ -292,17 +188,10 @@ export default function PartySaloonScreen() {
                 style={styles.smallInput}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text
-                  style={{
-                    color: filterDate ? "#000" : "#777",
-                  }}
-                >
-                  {filterDate
-                    ? formatFilterDate(filterDate)
-                    : "Selecione uma data..."}
+                <Text style={{ color: filterDate ? "#000" : "#777" }}>
+                  {filterDate ? formatFilterDate(filterDate) : "Selecionar..."}
                 </Text>
               </TouchableOpacity>
-
               {showDatePicker && (
                 <DateTimePicker
                   value={filterDate ?? new Date()}
@@ -315,94 +204,86 @@ export default function PartySaloonScreen() {
           )}
         </View>
 
-        <View style={styles.inputSmallWrap}>
+        <View style={styles.inputSmallWrapLast}>
           <Text style={styles.smallLabel}>Status</Text>
-
-          <TouchableOpacity
-            style={styles.selectSmall}
-            onPress={() =>
-              setFilterStatus((prev) =>
-                prev === null
-                  ? "all"
-                  : prev === "all"
-                    ? "active"
-                    : prev === "active"
-                      ? "closed"
-                      : null,
-              )
-            }
-          >
-            <Text style={styles.selectSmallText}>
-              {filterStatus === null
-                ? "Status"
-                : filterStatus === "all"
-                  ? "Todos"
-                  : filterStatus}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={filterStatus}
+              onValueChange={(value: StatusFilter) => setFilterStatus(value)}
+              style={styles.picker}
+            >
+              {RESERVATION_STATUS_OPTIONS.map((option) => (
+                <Picker.Item
+                  key={option.value}
+                  label={option.label}
+                  value={option.value}
+                />
+              ))}
+            </Picker>
+          </View>
         </View>
       </View>
 
-      <View style={{ flex: 1 }}>
-        <Text style={styles.smallLabel}>Reservado por</Text>
+      {isManager && (
+        <View>
+          <Text style={styles.smallLabel}>Reservado por</Text>
+          <TextInput
+            placeholder="Filtro por nome..."
+            value={filterReservedBy}
+            onChangeText={setFilterReservedBy}
+            style={styles.smallInput}
+          />
+        </View>
+      )}
 
-        <TextInput
-          placeholder="Filtro por nome..."
-          value={filterReservedBy}
-          onChangeText={setFilterReservedBy}
-          style={styles.smallInput}
-        />
-      </View>
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
 
-      <View style={{ marginBlock: 22 }}>
+      <View style={styles.listContainer}>
         {filtered.map((reservation) => (
           <View key={reservation.id} style={styles.avisoCard}>
             <View style={styles.avisoHeader}>
               <Text style={styles.avisoTitle}>{reservation.occasion}</Text>
-
               <View
                 style={[
                   styles.statusDot,
                   {
                     backgroundColor:
-                      reservation.status === "active" ? "#2ecc71" : "#e74c3c",
+                      RESERVATION_STATUS_COLOR[reservation.status],
                   },
                 ]}
               />
             </View>
-
+            <Text style={styles.statusText}>
+              {RESERVATION_STATUS_LABEL[reservation.status]}
+            </Text>
             <Text style={styles.avisoDate}>
               Data: {formatDate(reservation.date)}
             </Text>
-
             <Text style={styles.avisoDate}>Horário: {reservation.time}</Text>
-
             <Text style={styles.avisoRef}>
               Reservado por: {reservation.reservedBy.name}
             </Text>
-
             <Text style={styles.avisoRef}>
               Bloco {reservation.reservedBy.bloco} • Apartamento{" "}
               {reservation.reservedBy.apartamento}
             </Text>
-
             <TouchableOpacity
               style={styles.cardButton}
-              onPress={() => {
+              onPress={() =>
                 router.push({
                   pathname: "/party-saloon/[id]",
-                  params: {
-                    id: reservation.id,
-                  },
-                });
-              }}
+                  params: { id: reservation.id },
+                })
+              }
             >
               <Text style={styles.cardButtonText}>Ver Reserva</Text>
             </TouchableOpacity>
           </View>
         ))}
 
-        {filtered.length === 0 && (
+        {!errorMessage && filtered.length === 0 && (
           <View style={styles.emptyBox}>
             <Text>Nenhuma reserva encontrada.</Text>
           </View>
