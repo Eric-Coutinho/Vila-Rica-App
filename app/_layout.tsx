@@ -312,6 +312,42 @@ export default function RootLayout() {
             },
           }}
         />
+        <Stack.Screen
+          name="meetings"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="create-meeting"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="meetings/[id]"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
