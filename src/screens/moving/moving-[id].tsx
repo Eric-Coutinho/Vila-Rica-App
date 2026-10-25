@@ -11,6 +11,7 @@ import {
 
 import {
   cancelReservation,
+  confirmReservation,
   finishMoveReservation,
   getReservationById,
 } from "../../services/reservationService";
@@ -66,21 +67,45 @@ export default function MovingReservationDetailScreen() {
     }
   }
 
+  async function approve() {
+    if (!id) return;
+    setActing(true);
+    try {
+      setReservation(await confirmReservation(id));
+      alert("Mudança aprovada e confirmada.");
+    } catch (error) {
+      alert(
+        `Erro - ${getErrorMessage(error, "Não foi possível aprovar a mudança.")}`,
+      );
+    } finally {
+      setActing(false);
+    }
+  }
+
   function requestCancellation() {
+    const refusing =
+      reservation?.permissions.isManager &&
+      reservation.permissions.canConfirmReservation;
     Alert.alert(
-      "Cancelar mudança",
-      "Tem certeza de que deseja cancelar esta mudança?",
+      refusing ? "Recusar mudança" : "Cancelar mudança",
+      refusing
+        ? "Tem certeza de que deseja recusar esta reserva de mudança?"
+        : "Tem certeza de que deseja cancelar esta mudança?",
       [
         { text: "Voltar", style: "cancel" },
         {
-          text: "Cancelar mudança",
+          text: refusing ? "Recusar mudança" : "Cancelar mudança",
           style: "destructive",
           onPress: async () => {
             if (!id) return;
             setActing(true);
             try {
               setReservation(await cancelReservation(id));
-              alert("Mudança cancelada com sucesso.");
+              alert(
+                refusing
+                  ? "Mudança recusada."
+                  : "Mudança cancelada com sucesso.",
+              );
             } catch (error) {
               alert(
                 `Erro - ${getErrorMessage(error, "Não foi possível cancelar a mudança.")}`,
@@ -109,6 +134,9 @@ export default function MovingReservationDetailScreen() {
   const contactLabel = reservation.permissions.isManager
     ? "Contatar Morador"
     : "Contatar Síndico";
+  const refusing =
+    reservation.permissions.isManager &&
+    reservation.permissions.canConfirmReservation;
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
@@ -139,6 +167,16 @@ export default function MovingReservationDetailScreen() {
             <Text style={styles.detailText}>{reservation.reservedBy.name}</Text>
           </>
         )}
+        {reservation.permissions.isManager &&
+          reservation.permissions.canConfirmReservation && (
+            <TouchableOpacity
+              style={[styles.actionButton, { marginTop: 22 }]}
+              onPress={approve}
+              disabled={acting}
+            >
+              <Text style={styles.actionText}>Aprovar Mudança</Text>
+            </TouchableOpacity>
+          )}
         {reservation.permissions.canFinish && (
           <TouchableOpacity
             style={[styles.actionButton, { marginTop: 22 }]}
@@ -154,7 +192,9 @@ export default function MovingReservationDetailScreen() {
             onPress={requestCancellation}
             disabled={acting}
           >
-            <Text style={styles.actionText}>Cancelar Mudança</Text>
+            <Text style={styles.actionText}>
+              {refusing ? "Recusar Mudança" : "Cancelar Mudança"}
+            </Text>
           </TouchableOpacity>
         )}
         {(reservation.permissions.canFinish ||

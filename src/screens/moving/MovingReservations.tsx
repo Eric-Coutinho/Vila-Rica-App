@@ -17,7 +17,7 @@ import {
   RESERVATION_STATUS_COLOR,
   ReservationSummary,
 } from "../../types/reservations";
-import { styles } from "./MovingReservationScreenStyles";
+import { styles } from "./MovingReservationStyles";
 
 function isManager(role?: string) {
   const normalized = String(role || "")
