@@ -348,6 +348,42 @@ export default function RootLayout() {
             },
           }}
         />
+        <Stack.Screen
+          name="moving"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="create-moving-reservation"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="moving/[id]"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

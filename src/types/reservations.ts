@@ -26,8 +26,10 @@ export type ReservationSummary = {
   type: "party_saloon" | "move";
   date: string;
   time: string;
+  endTime?: string;
   startsAt: string;
   occasion: string;
+  company?: string;
   status: ReservationStatus;
   guestCount: number;
   reservedBy: ReservationPerson;
@@ -41,6 +43,7 @@ export type ReservationPermissions = {
   canConfirmReservation: boolean;
   canConfirmPayment: boolean;
   canCancel: boolean;
+  canFinish: boolean;
   canManageGuests: boolean;
 };
 
@@ -52,6 +55,7 @@ export type Reservation = ReservationSummary & {
   canceledAt?: string | null;
   requiresPaymentContact: boolean;
   requiresRefundContact: boolean;
+  isToday?: boolean;
   permissions: ReservationPermissions;
 };
 

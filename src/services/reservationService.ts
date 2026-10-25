@@ -19,7 +19,7 @@ type ReservationListResponse = ErrorResponse & {
 };
 
 async function parseJson<T>(response: Response): Promise<T> {
-  return response.json().catch(() => ({} as T));
+  return response.json().catch(() => ({}) as T);
 }
 
 function ensureSuccess(
@@ -37,7 +37,10 @@ function requireReservation(
   response: Response,
 ): Reservation {
   if (!data.reservation) {
-    throw new ApiError("A API não retornou a reserva atualizada.", response.status);
+    throw new ApiError(
+      "A API não retornou a reserva atualizada.",
+      response.status,
+    );
   }
   return data.reservation;
 }
@@ -55,6 +58,48 @@ export async function listPartySaloonReservations(): Promise<
   return data.reservations ?? [];
 }
 
+export async function listMoveReservations(): Promise<ReservationSummary[]> {
+  const response = await apiFetch(
+    "/reservation/list-reservations/move",
+    { method: "GET" },
+    true,
+  );
+  const data = await parseJson<ReservationListResponse>(response);
+  ensureSuccess(
+    response,
+    data,
+    "Não foi possível carregar as reservas de mudança.",
+  );
+  return data.reservations ?? [];
+}
+
+export async function createMoveReservation(input: {
+  date: string;
+  startTime: string;
+  endTime: string;
+  company: string;
+}): Promise<Reservation> {
+  const response = await apiFetch(
+    "/reservation/create-reservation",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        type: "move",
+        date: input.date,
+        time: input.startTime,
+        endTime: input.endTime,
+        occasion: "Mudança",
+        company: input.company.trim(),
+        guests: [],
+      }),
+    },
+    true,
+  );
+  const data = await parseJson<ReservationResponse>(response);
+  ensureSuccess(response, data, "Não foi possível criar a reserva de mudança.");
+  return requireReservation(data, response);
+}
+
 export async function getReservationById(id: string): Promise<Reservation> {
   const response = await apiFetch(
     `/reservation/get-reservation/${encodeURIComponent(id)}`,
@@ -68,7 +113,7 @@ export async function getReservationById(id: string): Promise<Reservation> {
 
 async function patchReservation(
   id: string,
-  action: "confirm" | "confirm-payment" | "cancel",
+  action: "confirm" | "confirm-payment" | "cancel" | "finish-move",
 ): Promise<Reservation> {
   const response = await apiFetch(
     `/reservation/${encodeURIComponent(id)}/${action}`,
@@ -86,8 +131,10 @@ export const confirmReservation = (id: string) =>
 export const confirmReservationPayment = (id: string) =>
   patchReservation(id, "confirm-payment");
 
-export const cancelReservation = (id: string) =>
-  patchReservation(id, "cancel");
+export const cancelReservation = (id: string) => patchReservation(id, "cancel");
+
+export const finishMoveReservation = (id: string) =>
+  patchReservation(id, "finish-move");
 
 export async function addReservationGuest(
   reservationId: string,
