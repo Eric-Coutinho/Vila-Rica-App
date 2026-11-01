@@ -29,10 +29,29 @@ type ChatMessage = {
   action?: SupportAction;
 };
 
-const QUICK_QUESTIONS = [
-  "Como faço para reservar o salão de festas?",
-  "Como posso agendar uma mudança?",
-  "Como consulto as assembleias?",
+const QUICK_QUESTIONS: Array<{
+  question: string;
+  answer: string;
+  action?: SupportAction;
+}> = [
+  {
+    question: "Como faço para reservar o salão de festas?",
+    answer:
+      "Para criar uma reserva no salão de festas:\n\n1. Na tela principal, toque em Salão de Festas.\n2. Toque em Nova Reserva.\n3. Selecione uma data futura e informe o horário e a ocasião.\n4. Preencha a lista de convidados.\n5. Confirme a solicitação.\n\nA reserva ficará aguardando a aprovação do síndico.",
+    action: { label: "Abrir Salão de Festas", route: "/party-saloon" },
+  },
+  {
+    question: "Como posso agendar uma mudança?",
+    answer:
+      "Para reservar um horário de mudança:\n\n1. Na tela principal, toque em Mudanças.\n2. Toque em Reservar horário.\n3. Informe uma data futura, os horários de início e término e a empresa de mudança.\n4. Toque em Criar reserva.\n\nA solicitação ficará aguardando a aprovação do síndico.",
+    action: { label: "Abrir Horários de Mudança", route: "/moving" },
+  },
+  {
+    question: "Como consulto as assembleias?",
+    answer:
+      "Para consultar as assembleias:\n\n1. Na tela principal, toque em Assembleias.\n2. Use os filtros de data, status ou descrição, se necessário.\n3. Toque em Ver Informações na assembleia desejada.\n\nNa tela de detalhes, você pode consultar a descrição, a ata quando disponível e os comentários.",
+    action: { label: "Abrir Assembleias", route: "/meetings" },
+  },
 ];
 
 const ALLOWED_ACTION_ROUTES = new Set([
@@ -98,6 +117,15 @@ export default function ChatbotScreen() {
     }
   };
 
+  const sendQuickQuestion = (item: (typeof QUICK_QUESTIONS)[number]) => {
+    if (sending) return;
+    setMessages((current) => [
+      ...current,
+      createMessage(item.question, "user"),
+      createMessage(item.answer, "bot", { action: item.action }),
+    ]);
+  };
+
   const formatMessageDate = (date: Date) => {
     return date.toLocaleString("pt-BR", {
       day: "2-digit",
@@ -157,15 +185,15 @@ export default function ChatbotScreen() {
 
             {QUICK_QUESTIONS.map((item) => (
               <TouchableOpacity
-                key={item}
+                key={item.question}
                 style={styles.quickQuestionButton}
                 activeOpacity={0.7}
                 disabled={sending}
-                onPress={() => sendMessage(item)}
+                onPress={() => sendQuickQuestion(item)}
               >
                 <Text style={styles.questionBullet}>•</Text>
 
-                <Text style={styles.quickQuestionText}>{item}</Text>
+                <Text style={styles.quickQuestionText}>{item.question}</Text>
               </TouchableOpacity>
             ))}
           </View>
