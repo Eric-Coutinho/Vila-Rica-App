@@ -46,32 +46,32 @@ export const styles = StyleSheet.create({
   },
 
   chatPositioner: {
-  position: "absolute",
-  left: 18,
-  right: 18,
-  bottom: 20,
-  alignItems: "center",
-},
-
-chatContainer: {
-  width: "100%",
-  maxWidth: 600,
-  minHeight: 350,
-  padding: 14,
-  backgroundColor: "#dedede",
-  borderRadius: 6,
-  flexShrink: 1,
-  overflow: "hidden",
-
-  elevation: 7,
-  shadowColor: "#000",
-  shadowOpacity: 0.2,
-  shadowOffset: {
-    width: 0,
-    height: 3,
+    position: "absolute",
+    left: 18,
+    right: 18,
+    bottom: 20,
+    alignItems: "center",
   },
-  shadowRadius: 6,
-},
+
+  chatContainer: {
+    width: "100%",
+    maxWidth: 600,
+    minHeight: 350,
+    padding: 14,
+    backgroundColor: "#dedede",
+    borderRadius: 6,
+    flexShrink: 1,
+    overflow: "hidden",
+
+    elevation: 7,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowRadius: 6,
+  },
 
   quickQuestionsCard: {
     width: "100%",
@@ -170,6 +170,40 @@ chatContainer: {
 
   botMessageText: {
     color: "#222",
+  },
+
+  messageSources: {
+    color: "#666",
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 7,
+  },
+
+  suggestedActionButton: {
+    alignSelf: "flex-start",
+    backgroundColor: "#466CA5",
+    borderRadius: 5,
+    marginTop: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+
+  suggestedActionText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  typingRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginTop: 8,
+  },
+
+  typingText: {
+    color: "#555",
+    fontSize: 13,
+    marginLeft: 7,
   },
 
   messageDate: {

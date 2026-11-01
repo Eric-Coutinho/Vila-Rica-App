@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +15,8 @@ import {
 } from "react-native";
 
 import { styles } from "./ChatbotStyles";
-import { getStoredUser } from "@/src/services/session";
+import { sendSupportMessage } from "@/src/services/supportService";
+import type { SupportAction } from "@/src/types/support";
 
 type MessageAuthor = "user" | "bot";
 
@@ -25,164 +25,77 @@ type ChatMessage = {
   text: string;
   author: MessageAuthor;
   createdAt: Date;
+  sources?: string[];
+  action?: SupportAction;
 };
 
-type QuickQuestion = {
-  question: string;
-  answer: string;
-};
-
-type SupportStatus = "answered" | "waiting" | "urgent";
-
-type SupportChat = {
-  id: string;
-  date: string;
-  question: string;
-  status: SupportStatus;
-};
-
-const QUICK_QUESTIONS: QuickQuestion[] = [
-  {
-    question: "Como faço para reservar o salão de festas?",
-    answer:
-      "As reservas do salão de festas são realizadas na tela que é acessada pelo botão 'Salão de festas' na tela principal do aplicativo. Gostaria que eu marcasse uma reserva?",
-  },
-  {
-    question: "Como faço para gerar o boleto do condomínio esse mês?",
-    answer:
-      "Infelizmente essa funcionalidade ainda não está disponível no aplicativo. Gostaria de falar com o síndico para obter informações mais detalhadas?",
-  },
+const QUICK_QUESTIONS = [
+  "Como faço para reservar o salão de festas?",
+  "Como posso agendar uma mudança?",
+  "Como consulto as assembleias?",
 ];
 
-const MOCK_SUPPORT_CHATS: SupportChat[] = [
-  {
-    id: "#2131239231",
-    date: "07/10/2024",
-    question: "Como gero uma nova via do boleto?",
-    status: "answered",
-  },
-  {
-    id: "#2131239232",
-    date: "07/10/2024",
-    question: "Quero alterar o meu email de cadastro",
-    status: "waiting",
-  },
-  {
-    id: "#2131239233",
-    date: "07/10/2024",
-    question: "Como abrir uma nova reclamação?",
-    status: "urgent",
-  },
-];
+const ALLOWED_ACTION_ROUTES = new Set([
+  "/party-saloon",
+  "/moving",
+  "/meetings",
+  "/complaints",
+  "/notices",
+]);
 
 export default function ChatbotScreen() {
+  const router = useRouter();
   const { height: windowHeight } = useWindowDimensions();
   const messagesScrollRef = useRef<ScrollView>(null);
-
-  const [loadingRole, setLoadingRole] = useState(true);
-  const [isSupportUser, setIsSupportUser] = useState(false);
-
   const [messageInput, setMessageInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sending, setSending] = useState(false);
 
-  const [filterDate, setFilterDate] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | SupportStatus>(
-    "all",
-  );
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadUserRole() {
-      try {
-        const user = await getStoredUser();
-
-        const normalizedRole = String(user?.role || "Morador")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-
-        const supportRoles = ["sindico", "adm", "admin", "administrador"];
-
-        if (mounted) {
-          setIsSupportUser(supportRoles.includes(normalizedRole));
-        }
-      } catch (error) {
-        console.error("Erro ao carregar usuário:", error);
-
-        if (mounted) {
-          setIsSupportUser(false);
-        }
-      } finally {
-        if (mounted) {
-          setLoadingRole(false);
-        }
-      }
-    }
-
-    loadUserRole();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const filteredSupportChats = useMemo(() => {
-    return MOCK_SUPPORT_CHATS.filter((chat) => {
-      const matchesDate =
-        filterDate.trim() === "" || chat.date.includes(filterDate.trim());
-
-      const matchesStatus =
-        filterStatus === "all" || chat.status === filterStatus;
-
-      return matchesDate && matchesStatus;
-    });
-  }, [filterDate, filterStatus]);
-
-  const createMessage = (text: string, author: MessageAuthor): ChatMessage => ({
+  const createMessage = (
+    text: string,
+    author: MessageAuthor,
+    extra: Pick<ChatMessage, "sources" | "action"> = {},
+  ): ChatMessage => ({
     id: `${Date.now()}-${author}-${Math.random()}`,
     text,
     author,
     createdAt: new Date(),
+    ...extra,
   });
 
-  const sendQuickQuestion = (item: QuickQuestion) => {
-    const userMessage = createMessage(item.question, "user");
-
-    const botMessage = createMessage(item.answer, "bot");
-
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      userMessage,
-      botMessage,
-    ]);
-  };
-
-  const sendTypedMessage = () => {
-    const text = messageInput.trim();
-
+  const sendMessage = async (question?: string) => {
+    const text = (question || messageInput).trim();
     if (!text) {
       return;
     }
-
     const userMessage = createMessage(text, "user");
-
-    const matchingQuestion = QUICK_QUESTIONS.find(
-      (item) => normalizeText(item.question) === normalizeText(text),
-    );
-
-    setMessages((currentMessages) => {
-      if (!matchingQuestion) {
-        return [...currentMessages, userMessage];
-      }
-
-      const botMessage = createMessage(matchingQuestion.answer, "bot");
-
-      return [...currentMessages, userMessage, botMessage];
-    });
-
     setMessageInput("");
+    setMessages((current) => [...current, userMessage]);
+    setSending(true);
+
+    try {
+      const history = [...messages, userMessage].slice(-6).map((item) => ({
+        role:
+          item.author === "user" ? ("user" as const) : ("assistant" as const),
+        content: item.text,
+      }));
+      const result = await sendSupportMessage(text, history);
+      setMessages((current) => [
+        ...current,
+        createMessage(result.answer, "bot", {
+          sources: result.sources,
+          action: result.suggestedAction,
+        }),
+      ]);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar sua pergunta.";
+      setMessages((current) => [...current, createMessage(message, "bot")]);
+    } finally {
+      setSending(false);
+    }
   };
 
   const formatMessageDate = (date: Date) => {
@@ -194,142 +107,6 @@ export default function ChatbotScreen() {
       minute: "2-digit",
     });
   };
-
-  const getStatusColor = (status: SupportStatus) => {
-    switch (status) {
-      case "answered":
-        return "#20df25";
-
-      case "waiting":
-        return "#ffe600";
-
-      case "urgent":
-        return "#ff1010";
-
-      default:
-        return "#999";
-    }
-  };
-
-  const openSupportChat = (chat: SupportChat) => {
-    Alert.alert(
-      chat.id,
-      "A visualização completa deste chat será adicionada junto com a API do chatbot.",
-    );
-  };
-
-  if (loadingRole) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#466CA5" />
-      </View>
-    );
-  }
-
-  if (isSupportUser) {
-    return (
-      <View style={styles.screen}>
-        <ScrollView
-          contentContainerStyle={styles.supportPage}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.supportContent}>
-            <Image
-              source={require("../../../assets/images/mascote.png")}
-              style={styles.supportMascot}
-              resizeMode="contain"
-            />
-
-            <Text style={styles.supportTitle}>Suporte{"\n"}necessário</Text>
-
-            <View style={styles.filtersRow}>
-              <View style={styles.filterColumn}>
-                <Text style={styles.filterLabel}>Data</Text>
-
-                <TextInput
-                  style={styles.dateInput}
-                  value={filterDate}
-                  onChangeText={setFilterDate}
-                  placeholder="dd/mm/aaaa"
-                  placeholderTextColor="#777"
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
-                />
-              </View>
-
-              <View style={styles.filterColumn}>
-                <Text style={styles.filterLabel}>Status</Text>
-
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={filterStatus}
-                    onValueChange={(value) =>
-                      setFilterStatus(value as "all" | SupportStatus)
-                    }
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Status" value="all" />
-
-                    <Picker.Item label="Respondido" value="answered" />
-
-                    <Picker.Item label="Aguardando" value="waiting" />
-
-                    <Picker.Item label="Urgente" value="urgent" />
-                  </Picker>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.supportList}>
-              {filteredSupportChats.map((chat) => (
-                <View key={chat.id} style={styles.supportCard}>
-                  <View style={styles.supportCardHeader}>
-                    <Text style={styles.supportCardId}>{chat.id}</Text>
-
-                    <View
-                      style={[
-                        styles.supportStatusDot,
-                        {
-                          backgroundColor: getStatusColor(chat.status),
-                        },
-                      ]}
-                    />
-                  </View>
-
-                  <Text style={styles.supportCardDate}>{chat.date}</Text>
-
-                  <Text style={styles.supportCardQuestion}>
-                    {chat.question}
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.viewChatButton}
-                    activeOpacity={0.85}
-                    onPress={() => openSupportChat(chat)}
-                  >
-                    <Text style={styles.viewChatButtonText}>Ver Chat</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-
-              {filteredSupportChats.length === 0 && (
-                <View style={styles.emptySupport}>
-                  <Text style={styles.emptySupportText}>
-                    Nenhum atendimento encontrado.
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </ScrollView>
-
-        <View style={styles.floatingChatButton}>
-          <Ionicons name="chatbubble-ellipses-outline" size={36} color="#fff" />
-        </View>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView
@@ -380,14 +157,15 @@ export default function ChatbotScreen() {
 
             {QUICK_QUESTIONS.map((item) => (
               <TouchableOpacity
-                key={item.question}
+                key={item}
                 style={styles.quickQuestionButton}
                 activeOpacity={0.7}
-                onPress={() => sendQuickQuestion(item)}
+                disabled={sending}
+                onPress={() => sendMessage(item)}
               >
                 <Text style={styles.questionBullet}>•</Text>
 
-                <Text style={styles.quickQuestionText}>{item.question}</Text>
+                <Text style={styles.quickQuestionText}>{item}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -427,6 +205,18 @@ export default function ChatbotScreen() {
                     {message.text}
                   </Text>
 
+                  {message.action &&
+                  ALLOWED_ACTION_ROUTES.has(message.action.route) ? (
+                    <TouchableOpacity
+                      style={styles.suggestedActionButton}
+                      onPress={() => router.push(message.action!.route as any)}
+                    >
+                      <Text style={styles.suggestedActionText}>
+                        {message.action.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+
                   <Text
                     style={[
                       styles.messageDate,
@@ -442,6 +232,15 @@ export default function ChatbotScreen() {
             </ScrollView>
           )}
 
+          {sending ? (
+            <View style={styles.typingRow}>
+              <ActivityIndicator size="small" color="#466CA5" />
+              <Text style={styles.typingText}>
+                Consultando a base de conhecimento...
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.messageInputContainer}>
             <TextInput
               style={styles.messageInput}
@@ -453,19 +252,20 @@ export default function ChatbotScreen() {
               maxLength={500}
               returnKeyType="send"
               blurOnSubmit
-              onSubmitEditing={sendTypedMessage}
+              editable={!sending}
+              onSubmitEditing={() => sendMessage()}
             />
 
             <TouchableOpacity
               style={styles.sendButton}
               activeOpacity={0.7}
-              onPress={sendTypedMessage}
-              disabled={!messageInput.trim()}
+              onPress={() => sendMessage()}
+              disabled={!messageInput.trim() || sending}
             >
               <Ionicons
                 name="paper-plane-outline"
                 size={31}
-                color={messageInput.trim() ? "#111" : "#999"}
+                color={messageInput.trim() && !sending ? "#111" : "#999"}
               />
             </TouchableOpacity>
           </View>
@@ -473,12 +273,4 @@ export default function ChatbotScreen() {
       </View>
     </KeyboardAvoidingView>
   );
-}
-
-function normalizeText(text: string) {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
 }
