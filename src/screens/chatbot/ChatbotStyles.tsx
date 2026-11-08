@@ -605,6 +605,122 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  supportStatusRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+
+  supportStatusText: {
+    color: "#111",
+    fontSize: 16,
+  },
+
+  supportDetailStatusDot: {
+    borderColor: "rgba(0,0,0,0.25)",
+    borderRadius: 7,
+    borderWidth: 0.5,
+    height: 13,
+    marginLeft: 8,
+    width: 13,
+  },
+
+  supportEditStatusButton: {
+    marginLeft: 8,
+    padding: 3,
+  },
+
+  supportModalOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.48)",
+    flex: 1,
+    justifyContent: "center",
+    padding: 15,
+  },
+
+  supportStatusModal: {
+    backgroundColor: "#fff",
+    borderRadius: 9,
+    maxWidth: 430,
+    padding: 18,
+    width: "100%",
+  },
+
+  supportStatusModalTitle: {
+    color: "#111",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+
+  supportCurrentStatusText: {
+    color: "#555",
+    fontSize: 14,
+    marginBottom: 10,
+    marginTop: 5,
+  },
+
+  supportStatusOption: {
+    alignItems: "center",
+    borderColor: "#d5d5d5",
+    borderRadius: 6,
+    borderWidth: 1,
+    flexDirection: "row",
+    marginTop: 9,
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
+
+  supportStatusOptionSelected: {
+    backgroundColor: "#eef4fc",
+    borderColor: "#466CA5",
+  },
+
+  supportOptionDot: {
+    borderColor: "rgba(0,0,0,0.25)",
+    borderRadius: 7,
+    borderWidth: 0.5,
+    height: 13,
+    marginRight: 9,
+    width: 13,
+  },
+
+  supportStatusOptionText: {
+    color: "#111",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  supportStatusActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 18,
+  },
+
+  supportStatusCancelButton: {
+    alignItems: "center",
+    backgroundColor: "#e2e2e2",
+    borderRadius: 6,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 42,
+  },
+
+  supportStatusCancelText: {
+    color: "#333",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  supportStatusSaveButton: {
+    alignItems: "center",
+    backgroundColor: "#466CA5",
+    borderRadius: 6,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 42,
+  },
+
   floatingChatButton: {
     position: "absolute",
     right: 18,

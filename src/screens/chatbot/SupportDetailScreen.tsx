@@ -1,15 +1,16 @@
-import { Picker } from "@react-native-picker/picker";
-import { useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
 
 import { styles } from "./ChatbotStyles";
 import {
@@ -26,6 +27,12 @@ const STATUS_LABEL: Record<SupportCaseStatus, string> = {
   resolved: "Resolvido",
   in_analysis: "Em análise",
   closed: "Fechada",
+};
+
+const STATUS_COLOR: Record<SupportCaseStatus, string> = {
+  resolved: "#20df25",
+  in_analysis: "#ffe600",
+  closed: "#ff1010",
 };
 
 function formatDate(value: string) {
@@ -47,6 +54,9 @@ export default function SupportDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [selectedStatus, setSelectedStatus] =
+    useState<SupportCaseStatus>("in_analysis");
 
   const load = useCallback(() => {
     if (!id) return () => undefined;
@@ -70,11 +80,14 @@ export default function SupportDetailScreen() {
   }, [id]);
   useFocusEffect(load);
 
-  const changeStatus = async (status: SupportCaseStatus) => {
+  const saveStatus = async () => {
     if (!conversation || saving) return;
     setSaving(true);
     try {
-      setConversation(await updateSupportCaseStatus(conversation.id, status));
+      setConversation(
+        await updateSupportCaseStatus(conversation.id, selectedStatus),
+      );
+      setStatusModalVisible(false);
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -123,20 +136,29 @@ export default function SupportDetailScreen() {
     >
       <Text style={styles.detailTitle}>Suporte{"\n"}ChatBot</Text>
       <Text style={styles.detailCase}>#{conversation.caseNumber}</Text>
-      <View style={styles.statusEditRow}>
-        <Text style={styles.statusEditLabel}>Status</Text>
-        <View style={styles.detailPickerWrap}>
-          <Picker
-            selectedValue={conversation.status || "in_analysis"}
-            onValueChange={(value) => changeStatus(value as SupportCaseStatus)}
-            enabled={!saving}
-            style={styles.detailPicker}
-          >
-            <Picker.Item label="Em análise" value="in_analysis" />
-            <Picker.Item label="Resolvido" value="resolved" />
-            <Picker.Item label="Fechada" value="closed" />
-          </Picker>
-        </View>
+      <View style={styles.supportStatusRow}>
+        <Text style={styles.supportStatusText}>
+          {STATUS_LABEL[conversation.status || "in_analysis"]}
+        </Text>
+        <View
+          style={[
+            styles.supportDetailStatusDot,
+            {
+              backgroundColor:
+                STATUS_COLOR[conversation.status || "in_analysis"],
+            },
+          ]}
+        />
+        <TouchableOpacity
+          style={styles.supportEditStatusButton}
+          accessibilityLabel="Alterar status"
+          onPress={() => {
+            setSelectedStatus(conversation.status || "in_analysis");
+            setStatusModalVisible(true);
+          }}
+        >
+          <Ionicons name="pencil-outline" size={20} color="#2764d7" />
+        </TouchableOpacity>
       </View>
       <View style={styles.residentInfo}>
         <Text style={styles.residentInfoText}>Morador</Text>
@@ -191,6 +213,73 @@ export default function SupportDetailScreen() {
       >
         <Text style={styles.replyButtonText}>Adicionar Resposta</Text>
       </TouchableOpacity>
+      <Modal
+        visible={statusModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
+        <Pressable
+          style={styles.supportModalOverlay}
+          onPress={() => setStatusModalVisible(false)}
+        >
+          <Pressable
+            style={styles.supportStatusModal}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <Text style={styles.supportStatusModalTitle}>Alterar status</Text>
+            <Text style={styles.supportCurrentStatusText}>
+              Status atual: {STATUS_LABEL[conversation.status || "in_analysis"]}
+            </Text>
+            {(["in_analysis", "resolved", "closed"] as SupportCaseStatus[]).map(
+              (status) => (
+                <TouchableOpacity
+                  key={status}
+                  style={[
+                    styles.supportStatusOption,
+                    selectedStatus === status &&
+                      styles.supportStatusOptionSelected,
+                  ]}
+                  onPress={() => setSelectedStatus(status)}
+                >
+                  <View
+                    style={[
+                      styles.supportOptionDot,
+                      { backgroundColor: STATUS_COLOR[status] },
+                    ]}
+                  />
+                  <Text style={styles.supportStatusOptionText}>
+                    {STATUS_LABEL[status]}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            )}
+            <View style={styles.supportStatusActions}>
+              <TouchableOpacity
+                style={styles.supportStatusCancelButton}
+                onPress={() => setStatusModalVisible(false)}
+                disabled={saving}
+              >
+                <Text style={styles.supportStatusCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.supportStatusSaveButton,
+                  saving && styles.disabledButton,
+                ]}
+                onPress={saveStatus}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.replyButtonText}>Salvar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
