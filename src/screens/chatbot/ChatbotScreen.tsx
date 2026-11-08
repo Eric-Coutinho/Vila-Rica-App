@@ -38,6 +38,7 @@ const QUICK_QUESTIONS: Array<{
 ];
 
 const ALLOWED_ACTION_ROUTES = new Set([
+  "new_chat",
   "/party-saloon",
   "/moving",
   "/meetings",
@@ -289,7 +290,9 @@ function ResidentChat() {
                       <TouchableOpacity
                         style={styles.suggestedActionButton}
                         onPress={() =>
-                          router.push(message.suggestedAction!.route as any)
+                          message.suggestedAction?.route === "new_chat"
+                            ? startNewChat()
+                            : router.push(message.suggestedAction!.route as any)
                         }
                       >
                         <Text style={styles.suggestedActionText}>
