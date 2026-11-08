@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -15,43 +15,26 @@ import {
 } from "react-native";
 
 import { styles } from "./ChatbotStyles";
-import { sendSupportMessage } from "@/src/services/supportService";
-import type { SupportAction } from "@/src/types/support";
-
-type MessageAuthor = "user" | "bot";
-
-type ChatMessage = {
-  id: string;
-  text: string;
-  author: MessageAuthor;
-  createdAt: Date;
-  sources?: string[];
-  action?: SupportAction;
-};
+import SupportCasesScreen from "./SupportCasesScreen";
+import {
+  escalateSupportConversation,
+  getCurrentSupportConversation,
+  sendSupportMessage,
+  startNewSupportConversation,
+} from "@/src/services/supportService";
+import { getStoredUser } from "@/src/services/session";
+import type { SupportAction, SupportConversation } from "@/src/types/support";
 
 const QUICK_QUESTIONS: Array<{
+  key: string;
   question: string;
-  answer: string;
-  action?: SupportAction;
 }> = [
   {
+    key: "party_saloon",
     question: "Como faço para reservar o salão de festas?",
-    answer:
-      "Para criar uma reserva no salão de festas:\n\n1. Na tela principal, toque em Salão de Festas.\n2. Toque em Nova Reserva.\n3. Selecione uma data futura e informe o horário e a ocasião.\n4. Preencha a lista de convidados.\n5. Confirme a solicitação.\n\nA reserva ficará aguardando a aprovação do síndico.",
-    action: { label: "Abrir Salão de Festas", route: "/party-saloon" },
   },
-  {
-    question: "Como posso agendar uma mudança?",
-    answer:
-      "Para reservar um horário de mudança:\n\n1. Na tela principal, toque em Mudanças.\n2. Toque em Reservar horário.\n3. Informe uma data futura, os horários de início e término e a empresa de mudança.\n4. Toque em Criar reserva.\n\nA solicitação ficará aguardando a aprovação do síndico.",
-    action: { label: "Abrir Horários de Mudança", route: "/moving" },
-  },
-  {
-    question: "Como consulto as assembleias?",
-    answer:
-      "Para consultar as assembleias:\n\n1. Na tela principal, toque em Assembleias.\n2. Use os filtros de data, status ou descrição, se necessário.\n3. Toque em Ver Informações na assembleia desejada.\n\nNa tela de detalhes, você pode consultar a descrição, a ata quando disponível e os comentários.",
-    action: { label: "Abrir Assembleias", route: "/meetings" },
-  },
+  { key: "move", question: "Como posso agendar uma mudança?" },
+  { key: "assemblies", question: "Como consulto as assembleias?" },
 ];
 
 const ALLOWED_ACTION_ROUTES = new Set([
@@ -62,95 +45,147 @@ const ALLOWED_ACTION_ROUTES = new Set([
   "/notices",
 ]);
 
+function isManager(role?: string) {
+  const normalized = String(role || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  return ["sindico", "admin", "adm", "administrador"].includes(normalized);
+}
+
 export default function ChatbotScreen() {
+  const [loadingRole, setLoadingRole] = useState(true);
+  const [manager, setManager] = useState(false);
+
+  useEffect(() => {
+    getStoredUser()
+      .then((user) => setManager(isManager(user?.role)))
+      .catch(() => setManager(false))
+      .finally(() => setLoadingRole(false));
+  }, []);
+
+  if (loadingRole) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#466CA5" size="large" />
+      </View>
+    );
+  }
+  return manager ? <SupportCasesScreen /> : <ResidentChat />;
+}
+
+function ResidentChat() {
   const router = useRouter();
   const { height: windowHeight } = useWindowDimensions();
   const messagesScrollRef = useRef<ScrollView>(null);
+  const [conversation, setConversation] = useState<SupportConversation | null>(
+    null,
+  );
   const [messageInput, setMessageInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
-  const createMessage = (
-    text: string,
-    author: MessageAuthor,
-    extra: Pick<ChatMessage, "sources" | "action"> = {},
-  ): ChatMessage => ({
-    id: `${Date.now()}-${author}-${Math.random()}`,
-    text,
-    author,
-    createdAt: new Date(),
-    ...extra,
-  });
+  const loadConversation = useCallback(() => {
+    let active = true;
+    setLoading(true);
+    getCurrentSupportConversation()
+      .then((item) => active && setConversation(item))
+      .catch(() => active && setConversation(null))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const sendMessage = async (question?: string) => {
+  useFocusEffect(loadConversation);
+
+  const sendMessage = async (question?: string, quickReplyKey?: string) => {
     const text = (question || messageInput).trim();
-    if (!text) {
-      return;
-    }
-    const userMessage = createMessage(text, "user");
+    if (!text || sending) return;
     setMessageInput("");
-    setMessages((current) => [...current, userMessage]);
     setSending(true);
-
     try {
-      const history = [...messages, userMessage].slice(-6).map((item) => ({
-        role:
-          item.author === "user" ? ("user" as const) : ("assistant" as const),
-        content: item.text,
-      }));
-      const result = await sendSupportMessage(text, history);
-      setMessages((current) => [
-        ...current,
-        createMessage(result.answer, "bot", {
-          sources: result.sources,
-          action: result.suggestedAction,
-        }),
-      ]);
+      const result = await sendSupportMessage(
+        text,
+        conversation?.id,
+        quickReplyKey,
+      );
+      setConversation(result.conversation);
     } catch (error) {
-      const message =
+      const textError =
         error instanceof Error
           ? error.message
           : "Não foi possível enviar sua pergunta.";
-      setMessages((current) => [...current, createMessage(message, "bot")]);
+      setConversation((current) =>
+        current
+          ? {
+              ...current,
+              messages: [
+                ...current.messages,
+                {
+                  id: `error-${Date.now()}`,
+                  author: "assistant",
+                  text: textError,
+                  sources: [],
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+            }
+          : current,
+      );
     } finally {
       setSending(false);
     }
   };
 
-  const sendQuickQuestion = (item: (typeof QUICK_QUESTIONS)[number]) => {
+  const startNewChat = async () => {
     if (sending) return;
-    setMessages((current) => [
-      ...current,
-      createMessage(item.question, "user"),
-      createMessage(item.answer, "bot", { action: item.action }),
-    ]);
+    setSending(true);
+    try {
+      setConversation(await startNewSupportConversation());
+    } finally {
+      setSending(false);
+    }
   };
 
-  const formatMessageDate = (date: Date) => {
-    return date.toLocaleString("pt-BR", {
+  const escalate = async () => {
+    if (!conversation || conversation.status || sending) return;
+    setSending(true);
+    try {
+      setConversation(await escalateSupportConversation(conversation.id));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
-      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
+  const messages = conversation?.messages || [];
+
+  if (loading)
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#466CA5" size="large" />
+      </View>
+    );
 
   return (
     <KeyboardAvoidingView
       style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
     >
       <ScrollView
         contentContainerStyle={[
           styles.residentPage,
-          {
-            paddingBottom: windowHeight * 0.5 + 45,
-          },
+          { paddingBottom: windowHeight * 0.56 + 45 },
         ]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
       >
         <View style={styles.residentContent}>
           <Image
@@ -158,41 +193,38 @@ export default function ChatbotScreen() {
             style={styles.residentMascot}
             resizeMode="contain"
           />
-
           <Text style={styles.greeting}>Olá!{"\n"}Como posso ajudar?</Text>
         </View>
       </ScrollView>
 
       <View style={styles.chatPositioner}>
         <View
-          style={[
-            styles.chatContainer,
-            {
-              maxHeight: windowHeight * 0.6,
-            },
-          ]}
+          style={[styles.chatContainer, { maxHeight: windowHeight * 0.66 }]}
         >
           <View style={styles.quickQuestionsCard}>
             <View style={styles.chatTitleRow}>
               <Ionicons name="hardware-chip-outline" size={31} color="#111" />
-
               <Text style={styles.chatTitle}>Chat</Text>
+              <TouchableOpacity
+                style={styles.newChatButton}
+                onPress={startNewChat}
+                disabled={sending}
+              >
+                <Text style={styles.newChatButtonText}>Iniciar novo chat</Text>
+              </TouchableOpacity>
             </View>
-
             <Text style={styles.commonQuestionsTitle}>
               Perguntas mais comuns:
             </Text>
-
             {QUICK_QUESTIONS.map((item) => (
               <TouchableOpacity
-                key={item.question}
+                key={item.key}
                 style={styles.quickQuestionButton}
                 activeOpacity={0.7}
                 disabled={sending}
-                onPress={() => sendQuickQuestion(item)}
+                onPress={() => sendMessage(item.question, item.key)}
               >
                 <Text style={styles.questionBullet}>•</Text>
-
                 <Text style={styles.quickQuestionText}>{item.question}</Text>
               </TouchableOpacity>
             ))}
@@ -204,71 +236,99 @@ export default function ChatbotScreen() {
               style={styles.messagesScroll}
               contentContainerStyle={styles.messagesContent}
               nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator
-              onContentSizeChange={() => {
-                messagesScrollRef.current?.scrollToEnd({
-                  animated: true,
-                });
-              }}
+              onContentSizeChange={() =>
+                messagesScrollRef.current?.scrollToEnd({ animated: true })
+              }
             >
-              {messages.map((message) => (
-                <View
-                  key={message.id}
-                  style={[
-                    styles.messageBubble,
-                    message.author === "user"
-                      ? styles.userMessage
-                      : styles.botMessage,
-                  ]}
-                >
-                  <Text
+              {messages.map((message, index) => {
+                const resident = message.author === "resident";
+                const manager = message.author === "manager";
+                const canEscalate =
+                  !conversation?.status &&
+                  message.author === "assistant" &&
+                  index === messages.length - 1;
+                return (
+                  <View
+                    key={message.id}
                     style={[
-                      styles.messageText,
-                      message.author === "user"
-                        ? styles.userMessageText
-                        : styles.botMessageText,
+                      styles.messageBubble,
+                      resident
+                        ? styles.userMessage
+                        : manager
+                          ? styles.managerMessage
+                          : styles.botMessage,
                     ]}
                   >
-                    {message.text}
-                  </Text>
-
-                  {message.action &&
-                  ALLOWED_ACTION_ROUTES.has(message.action.route) ? (
-                    <TouchableOpacity
-                      style={styles.suggestedActionButton}
-                      onPress={() => router.push(message.action!.route as any)}
+                    <Text
+                      style={[
+                        styles.messageAuthor,
+                        resident
+                          ? styles.userMessageText
+                          : styles.botMessageText,
+                      ]}
                     >
-                      <Text style={styles.suggestedActionText}>
-                        {message.action.label}
+                      {resident ? "Morador" : manager ? "Síndico" : "ChatBot"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.messageText,
+                        resident
+                          ? styles.userMessageText
+                          : styles.botMessageText,
+                      ]}
+                    >
+                      {message.text}
+                    </Text>
+                    {message.sources?.length ? (
+                      <Text style={styles.messageSources}>
+                        Fonte: {message.sources.join(", ")}
                       </Text>
-                    </TouchableOpacity>
-                  ) : null}
-
-                  <Text
-                    style={[
-                      styles.messageDate,
-                      message.author === "user"
-                        ? styles.userMessageDate
-                        : styles.botMessageDate,
-                    ]}
-                  >
-                    {formatMessageDate(message.createdAt)}
-                  </Text>
-                </View>
-              ))}
+                    ) : null}
+                    {message.suggestedAction &&
+                    ALLOWED_ACTION_ROUTES.has(message.suggestedAction.route) ? (
+                      <TouchableOpacity
+                        style={styles.suggestedActionButton}
+                        onPress={() =>
+                          router.push(message.suggestedAction!.route as any)
+                        }
+                      >
+                        <Text style={styles.suggestedActionText}>
+                          {message.suggestedAction.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    {canEscalate ? (
+                      <TouchableOpacity
+                        style={styles.unsatisfiedButton}
+                        onPress={escalate}
+                      >
+                        <Text style={styles.unsatisfiedButtonText}>
+                          Minha dúvida não foi resolvida
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    <Text
+                      style={[
+                        styles.messageDate,
+                        resident
+                          ? styles.userMessageDate
+                          : styles.botMessageDate,
+                      ]}
+                    >
+                      {formatDate(message.createdAt)}
+                    </Text>
+                  </View>
+                );
+              })}
             </ScrollView>
           )}
 
           {sending ? (
             <View style={styles.typingRow}>
               <ActivityIndicator size="small" color="#466CA5" />
-              <Text style={styles.typingText}>
-                Consultando a base de conhecimento...
-              </Text>
+              <Text style={styles.typingText}>Aguarde um momento...</Text>
             </View>
           ) : null}
-
           <View style={styles.messageInputContainer}>
             <TextInput
               style={styles.messageInput}
@@ -278,15 +338,11 @@ export default function ChatbotScreen() {
               placeholderTextColor="#aaa"
               multiline
               maxLength={500}
-              returnKeyType="send"
-              blurOnSubmit
               editable={!sending}
               onSubmitEditing={() => sendMessage()}
             />
-
             <TouchableOpacity
               style={styles.sendButton}
-              activeOpacity={0.7}
               onPress={() => sendMessage()}
               disabled={!messageInput.trim() || sending}
             >

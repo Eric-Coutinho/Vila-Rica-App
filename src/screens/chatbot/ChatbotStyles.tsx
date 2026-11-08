@@ -94,6 +94,20 @@ export const styles = StyleSheet.create({
     marginLeft: 9,
   },
 
+  newChatButton: {
+    marginLeft: "auto",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 4,
+    backgroundColor: "#466CA5",
+  },
+
+  newChatButtonText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+
   commonQuestionsTitle: {
     color: "#111",
     fontSize: 16,
@@ -159,6 +173,18 @@ export const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
 
+  managerMessage: {
+    alignSelf: "flex-start",
+    backgroundColor: "#e7f0ff",
+    borderBottomLeftRadius: 4,
+  },
+
+  messageAuthor: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
   messageText: {
     fontSize: 16,
     lineHeight: 22,
@@ -191,6 +217,22 @@ export const styles = StyleSheet.create({
   suggestedActionText: {
     color: "#fff",
     fontSize: 13,
+    fontWeight: "600",
+  },
+
+  unsatisfiedButton: {
+    alignSelf: "flex-start",
+    borderColor: "#466CA5",
+    borderRadius: 5,
+    borderWidth: 1,
+    marginTop: 9,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+  },
+
+  unsatisfiedButtonText: {
+    color: "#34598d",
+    fontSize: 12,
     fontWeight: "600",
   },
 
@@ -411,6 +453,156 @@ export const styles = StyleSheet.create({
   emptySupportText: {
     color: "#555",
     fontSize: 16,
+  },
+
+  supportError: {
+    color: "#b33d3d",
+    fontSize: 14,
+    marginTop: 14,
+    textAlign: "center",
+  },
+
+  detailPage: {
+    backgroundColor: "#fff",
+    flexGrow: 1,
+    padding: 22,
+    paddingBottom: 40,
+  },
+
+  detailTitle: {
+    color: "#111",
+    fontSize: 28,
+    fontWeight: "700",
+    lineHeight: 33,
+    textAlign: "center",
+  },
+
+  detailCase: {
+    color: "#111",
+    fontSize: 20,
+    marginTop: 8,
+    textAlign: "center",
+  },
+
+  statusEditRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+
+  statusEditLabel: {
+    color: "#111",
+    fontSize: 17,
+    marginRight: 8,
+  },
+
+  detailPickerWrap: {
+    borderColor: "#aaa",
+    borderRadius: 5,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 145,
+  },
+
+  detailPicker: {
+    color: "#111",
+    height: 42,
+    width: "100%",
+  },
+
+  residentInfo: {
+    borderLeftColor: "#466CA5",
+    borderLeftWidth: 3,
+    marginTop: 28,
+    paddingLeft: 12,
+  },
+
+  residentInfoText: {
+    color: "#111",
+    fontSize: 17,
+    lineHeight: 23,
+  },
+
+  createdAt: {
+    color: "#111",
+    fontSize: 16,
+    marginTop: 15,
+  },
+
+  detailSectionTitle: {
+    color: "#111",
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 26,
+    marginBottom: 10,
+  },
+
+  detailMessageCard: {
+    backgroundColor: "#fafafa",
+    borderColor: "#ddd",
+    borderRadius: 5,
+    borderWidth: 1,
+    marginBottom: 14,
+    padding: 11,
+  },
+
+  detailManagerCard: {
+    backgroundColor: "#edf4ff",
+  },
+
+  detailMessageAuthor: {
+    color: "#111",
+    fontSize: 19,
+    fontWeight: "700",
+  },
+
+  detailMessageDate: {
+    color: "#555",
+    fontSize: 11,
+    position: "absolute",
+    right: 10,
+    top: 13,
+  },
+
+  detailMessageText: {
+    color: "#111",
+    fontSize: 15,
+    lineHeight: 19,
+    marginTop: 10,
+  },
+
+  replyInput: {
+    backgroundColor: "#fafafa",
+    borderColor: "#ccc",
+    borderRadius: 5,
+    borderWidth: 1,
+    color: "#111",
+    fontSize: 16,
+    minHeight: 100,
+    padding: 10,
+    textAlignVertical: "top",
+  },
+
+  replyButton: {
+    alignItems: "center",
+    backgroundColor: "#466CA5",
+    borderRadius: 6,
+    marginTop: 12,
+    minHeight: 45,
+    justifyContent: "center",
+  },
+
+  disabledButton: {
+    opacity: 0.55,
+  },
+
+  replyButtonText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "600",
   },
 
   floatingChatButton: {

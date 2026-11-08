@@ -193,6 +193,42 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="meetings"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="create-meeting"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="meetings/[id]"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
           name="create-notice"
           options={{
             title: "Vila Rica Residencial",
@@ -241,6 +277,42 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="moving"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="create-moving-reservation"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
+          name="moving/[id]"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
           name="create-party-saloon-reservation"
           options={{
             title: "Vila Rica Residencial",
@@ -277,6 +349,18 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="support/[id]"
+          options={{
+            title: "Vila Rica Residencial",
+            headerTitleStyle: {
+              fontFamily: "Inter",
+              fontSize: 24,
+              color: "white",
+              fontWeight: 800,
+            },
+          }}
+        />
+        <Stack.Screen
           name="complaints"
           options={{
             title: "Vila Rica Residencial",
@@ -302,78 +386,6 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="complaints/[id]"
-          options={{
-            title: "Vila Rica Residencial",
-            headerTitleStyle: {
-              fontFamily: "Inter",
-              fontSize: 24,
-              color: "white",
-              fontWeight: 800,
-            },
-          }}
-        />
-        <Stack.Screen
-          name="meetings"
-          options={{
-            title: "Vila Rica Residencial",
-            headerTitleStyle: {
-              fontFamily: "Inter",
-              fontSize: 24,
-              color: "white",
-              fontWeight: 800,
-            },
-          }}
-        />
-        <Stack.Screen
-          name="create-meeting"
-          options={{
-            title: "Vila Rica Residencial",
-            headerTitleStyle: {
-              fontFamily: "Inter",
-              fontSize: 24,
-              color: "white",
-              fontWeight: 800,
-            },
-          }}
-        />
-        <Stack.Screen
-          name="meetings/[id]"
-          options={{
-            title: "Vila Rica Residencial",
-            headerTitleStyle: {
-              fontFamily: "Inter",
-              fontSize: 24,
-              color: "white",
-              fontWeight: 800,
-            },
-          }}
-        />
-        <Stack.Screen
-          name="moving"
-          options={{
-            title: "Vila Rica Residencial",
-            headerTitleStyle: {
-              fontFamily: "Inter",
-              fontSize: 24,
-              color: "white",
-              fontWeight: 800,
-            },
-          }}
-        />
-        <Stack.Screen
-          name="create-moving-reservation"
-          options={{
-            title: "Vila Rica Residencial",
-            headerTitleStyle: {
-              fontFamily: "Inter",
-              fontSize: 24,
-              color: "white",
-              fontWeight: 800,
-            },
-          }}
-        />
-        <Stack.Screen
-          name="moving/[id]"
           options={{
             title: "Vila Rica Residencial",
             headerTitleStyle: {
