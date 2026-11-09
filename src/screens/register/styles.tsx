@@ -70,6 +70,13 @@ export const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
   },
+  importButton: {
+    marginBottom: 12,
+    backgroundColor: "#627da9",
+    paddingVertical: 11,
+    borderRadius: 8,
+    alignItems: "center",
+  },
 
   cancelButton: {
     marginTop: 10,

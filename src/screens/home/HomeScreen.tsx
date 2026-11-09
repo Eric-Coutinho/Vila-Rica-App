@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -10,6 +9,7 @@ import {
 } from "react-native";
 
 import { styles } from "./styles";
+import ApartmentSection from "./ApartmentSection";
 import { getStoredUser } from "../../services/session";
 
 const QUICK_BUTTONS_MORADORES: Record<string, string> = {
@@ -162,76 +162,11 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.apartmentSection}>
-        <Text style={styles.sectionTitle}>
-          {roleTitle && ["sindico", "admin", "adm"].includes(roleTitle)
-            ? "Buscar Apartamentos:"
-            : "Seus Apartamentos:"}
-        </Text>
-
-        <View style={styles.apartmentCard}>
-          <Text style={styles.apartmentTitle}>
-            Apartamento 23{"\n"}Bloco 07
-          </Text>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Apartamento Alugado?</Text>
-            <Text style={styles.fieldValue}>Sim</Text>
-          </View>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Responsável:</Text>
-            <Text style={styles.fieldValue}>
-              Silvana de Paula Coutinho Pereira
-            </Text>
-          </View>
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Contato:</Text>
-            <Text style={styles.fieldValue}>41 99700-3637</Text>
-          </View>
-
-          <Text style={[styles.sectionTitle, { marginTop: 12 }]}>
-            Moradores:
-          </Text>
-
-          <View style={styles.moradoresGrid}>
-            {[
-              {
-                name: "Nome Morador 1",
-                doc: "123.456.789-00",
-                phone: "41 91234-5678",
-                age: "50 Anos",
-              },
-              {
-                name: "Nome Morador 2",
-                doc: "123.456.789-00",
-                phone: "41 91234-5678",
-                age: "48 Anos",
-              },
-              {
-                name: "Nome Morador 3",
-                doc: "123.456.789-00",
-                phone: "41 91234-5678",
-                age: "14 Anos",
-              },
-            ].map((m, i) => (
-              <View key={i} style={styles.moradorCard}>
-                <View style={styles.avatarPlaceholder}>
-                  <Image
-                    source={require("../../../assets/images/user.png")}
-                    style={styles.userImg}
-                  />
-                </View>
-                <Text style={styles.moradorName}>{m.name}</Text>
-                <Text style={styles.moradorDoc}>{m.doc}</Text>
-                <Text style={styles.moradorPhone}>{m.phone}</Text>
-                <Text style={styles.moradorAge}>{m.age}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
+      <ApartmentSection
+        manager={Boolean(
+          roleTitle && ["sindico", "admin", "adm"].includes(roleTitle),
+        )}
+      />
 
       <TouchableOpacity
         style={styles.bellFab}

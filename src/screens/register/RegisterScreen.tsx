@@ -60,25 +60,22 @@ export default function RegisterScreen() {
 
   async function validateAndSubmit() {
     if (!nome.trim()) return alert("Erro - Nome é obrigatório.");
-    if (!bloco) return alert("Erro - Selecione o Bloco.");
-    if (!apartamento) return alert("Erro - Selecione o Apartamento.");
-    if (!relacao) return alert("Erro - Selecione a Relação.");
+    if (!cpf.trim()) return alert("Erro - CPF é obrigatório.");
     if (!birthDate) return alert("Erro - Informe a data de nascimento.");
-    if (!tipoAcesso) return alert("Erro - Selecione o tipo de acesso.");
-    if (senhaInicial.length < 8)
+    if (senhaInicial && senhaInicial.length < 8)
       return alert("Erro - A senha inicial deve ter ao menos 8 caracteres.");
 
     const payload = {
-      email,
-      password: senhaInicial,
+      ...(email.trim() ? { email: email.trim() } : {}),
+      ...(senhaInicial ? { password: senhaInicial } : {}),
       name: nome,
-      bloco,
-      apartamento,
-      relacao,
+      ...(bloco ? { bloco } : {}),
+      ...(apartamento ? { apartamento } : {}),
+      ...(relacao ? { relacao } : {}),
       cpf,
       telefone,
       birthDate: birthDate.toISOString().slice(0, 10),
-      role: tipoAcesso,
+      role: tipoAcesso || "Morador",
     };
 
     try {
@@ -120,6 +117,15 @@ export default function RegisterScreen() {
         <Text style={styles.headerTitle}>Novo Morador</Text>
       </View>
 
+      <TouchableOpacity
+        style={styles.importButton}
+        onPress={() => router.push("/residents/import")}
+      >
+        <Text style={styles.registerButtonText}>
+          Importar moradores em massa
+        </Text>
+      </TouchableOpacity>
+
       <View style={styles.formCard}>
         <Text style={styles.label}>
           Nome <Text style={{ color: "#cc0000" }}>*</Text>
@@ -132,13 +138,11 @@ export default function RegisterScreen() {
           onChangeText={setNome}
         />
 
-        <Text style={styles.label}>
-          Bloco <Text style={{ color: "#cc0000" }}>*</Text>
-        </Text>
+        <Text style={styles.label}>Bloco</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={bloco}
-            onValueChange={(v) => setBloco(String(v))}
+            onValueChange={(v) => setBloco(v === null ? null : String(v))}
             mode="dropdown"
             style={[
               styles.selectElement,
@@ -152,13 +156,11 @@ export default function RegisterScreen() {
           </Picker>
         </View>
 
-        <Text style={styles.label}>
-          Apartamento <Text style={{ color: "#cc0000" }}>*</Text>
-        </Text>
+        <Text style={styles.label}>Apartamento</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={apartamento}
-            onValueChange={(v) => setApartamento(String(v))}
+            onValueChange={(v) => setApartamento(v === null ? null : String(v))}
             mode="dropdown"
             style={[
               styles.selectElement,
@@ -172,13 +174,11 @@ export default function RegisterScreen() {
           </Picker>
         </View>
 
-        <Text style={styles.label}>
-          Relação <Text style={{ color: "#cc0000" }}>*</Text>
-        </Text>
+        <Text style={styles.label}>Relação</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={relacao}
-            onValueChange={(v) => setRelacao(String(v))}
+            onValueChange={(v) => setRelacao(v === null ? null : String(v))}
             mode="dropdown"
             style={[
               styles.selectElement,
@@ -192,7 +192,9 @@ export default function RegisterScreen() {
           </Picker>
         </View>
 
-        <Text style={styles.label}>CPF</Text>
+        <Text style={styles.label}>
+          CPF <Text style={{ color: "#cc0000" }}>*</Text>
+        </Text>
         <TextInput
           placeholder="CPF..."
           style={styles.input}
@@ -278,13 +280,11 @@ export default function RegisterScreen() {
           </>
         )}
 
-        <Text style={styles.label}>
-          Tipo de acesso <Text style={{ color: "#cc0000" }}>*</Text>
-        </Text>
+        <Text style={styles.label}>Tipo de acesso</Text>
         <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={tipoAcesso}
-            onValueChange={(v) => setTipoAcesso(String(v))}
+            onValueChange={(v) => setTipoAcesso(v === null ? null : String(v))}
             mode="dropdown"
             style={[
               styles.selectElement,

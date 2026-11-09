@@ -176,6 +176,14 @@ export default function ResidentsScreen() {
         <Text style={styles.registerButtonText}>Cadastrar Morador</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.importButton}
+        onPress={() => router.push("/residents/import")}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.registerButtonText}>Importar moradores</Text>
+      </TouchableOpacity>
+
       <View style={styles.filtersRow}>
         <View style={styles.selectBox}>
           <Text style={styles.selectLabel}>Bloco</Text>

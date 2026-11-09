@@ -263,24 +263,12 @@ export default function ResidentDetailScreen() {
       return alert("Erro Nome é obrigatório.");
     }
 
-    if (!bloco) {
-      return alert("Erro Selecione o Bloco.");
-    }
-
-    if (!apartamento) {
-      return alert("Erro Selecione o Apartamento.");
-    }
-
-    if (!relacao) {
-      return alert("Erro Selecione a Relação.");
+    if (!cpf.trim()) {
+      return alert("Erro CPF é obrigatório.");
     }
 
     if (!birthDate) {
       return alert("Erro Informe a data de nascimento.");
-    }
-
-    if (!role) {
-      return alert("Erro Selecione o tipo de acesso.");
     }
 
     try {
@@ -345,14 +333,14 @@ export default function ResidentDetailScreen() {
           ...current,
           _id: id,
           name,
-          bloco,
-          apartamento,
-          relacao,
+          bloco: bloco ?? undefined,
+          apartamento: apartamento ?? undefined,
+          relacao: relacao ?? undefined,
           cpf,
           email,
           telefone,
           birthDate: formatDateForApi(birthDate),
-          role,
+          role: role ?? undefined,
         }));
       }
 
@@ -502,9 +490,7 @@ export default function ResidentDetailScreen() {
             editable={isEditing}
           />
 
-          <Text style={styles.label}>
-            Bloco <Text style={styles.required}>*</Text>
-          </Text>
+          <Text style={styles.label}>Bloco</Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
@@ -531,9 +517,7 @@ export default function ResidentDetailScreen() {
             </Picker>
           </View>
 
-          <Text style={styles.label}>
-            Apartamento <Text style={styles.required}>*</Text>
-          </Text>
+          <Text style={styles.label}>Apartamento</Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
@@ -560,9 +544,7 @@ export default function ResidentDetailScreen() {
             </Picker>
           </View>
 
-          <Text style={styles.label}>
-            Relação <Text style={styles.required}>*</Text>
-          </Text>
+          <Text style={styles.label}>Relação</Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
@@ -589,7 +571,9 @@ export default function ResidentDetailScreen() {
             </Picker>
           </View>
 
-          <Text style={styles.label}>CPF</Text>
+          <Text style={styles.label}>
+            CPF <Text style={styles.required}>*</Text>
+          </Text>
 
           <TextInput
             placeholder="CPF..."
@@ -675,9 +659,7 @@ export default function ResidentDetailScreen() {
             </>
           )}
 
-          <Text style={styles.label}>
-            Tipo de acesso <Text style={styles.required}>*</Text>
-          </Text>
+          <Text style={styles.label}>Tipo de acesso</Text>
 
           <View style={styles.pickerWrapper}>
             <Picker
