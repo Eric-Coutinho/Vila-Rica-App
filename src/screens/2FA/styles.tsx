@@ -32,7 +32,7 @@ export const styles = StyleSheet.create({
   },
   codeRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     width: "85%",
     marginBlock: 50,
     paddingHorizontal: 4,
