@@ -62,6 +62,7 @@ export const styles = StyleSheet.create({
     padding: 12,
   },
   importError: { color: "#9d2222", marginTop: 5 },
+  importWarning: { color: "#866000", marginTop: 5 },
 
   filtersRow: {
     flexDirection: "row",

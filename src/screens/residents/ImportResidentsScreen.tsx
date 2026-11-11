@@ -20,6 +20,7 @@ type ImportResult = {
   imported: number;
   skipped: number;
   errors: Array<{ row: number; message: string }>;
+  warnings?: Array<{ row: number; message: string }>;
 };
 
 export default function ImportResidentsScreen() {
@@ -130,6 +131,14 @@ export default function ImportResidentsScreen() {
             <Text
               key={`${item.row}-${item.message}`}
               style={styles.importError}
+            >
+              Linha {item.row}: {item.message}
+            </Text>
+          ))}
+          {result.warnings?.map((item) => (
+            <Text
+              key={`warning-${item.row}-${item.message}`}
+              style={styles.importWarning}
             >
               Linha {item.row}: {item.message}
             </Text>

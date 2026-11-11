@@ -271,16 +271,6 @@ export default function NoticesScreen() {
           </View>
         )}
       </View>
-
-      <TouchableOpacity
-        style={styles.bellFab}
-        onPress={() => {
-          alert("Funcionalidade em desenvolvimento...");
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.bellIcon}>🔔</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }

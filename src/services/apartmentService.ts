@@ -6,6 +6,8 @@ export type ApartmentResident = {
   name: string;
   phone: string;
   relation?: string;
+  cpf?: string;
+  birthDate?: string;
 };
 
 export type ApartmentInfo = {
@@ -49,9 +51,12 @@ export async function findApartment(
   return (await readBody(response)).apartment as ApartmentInfo;
 }
 
-export async function getApartmentCandidates(): Promise<ApartmentCandidate[]> {
+export async function searchApartmentCandidates(
+  search: string,
+): Promise<ApartmentCandidate[]> {
+  if (search.trim().length < 4) return [];
   const response = await apiFetch(
-    "/apartments/candidates",
+    `/apartments/candidates?search=${encodeURIComponent(search.trim())}`,
     { method: "GET" },
     true,
   );
@@ -84,10 +89,23 @@ export async function linkResidentToApartment(
   return (await readBody(response)).apartment as ApartmentInfo;
 }
 
+export async function unlinkResidentFromApartment(
+  apartment: Pick<ApartmentInfo, "bloco" | "apartamento">,
+  userId: string,
+): Promise<ApartmentInfo> {
+  const response = await apiFetch(
+    `/apartments/${encodeURIComponent(apartment.bloco)}/${encodeURIComponent(apartment.apartamento)}/residents/${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
+    true,
+  );
+  return (await readBody(response)).apartment as ApartmentInfo;
+}
+
 export async function importResidentsSpreadsheet(file: FormData): Promise<{
   imported: number;
   skipped: number;
   errors: Array<{ row: number; message: string }>;
+  warnings?: Array<{ row: number; message: string }>;
 }> {
   const token = await getAccessToken();
   if (!token)

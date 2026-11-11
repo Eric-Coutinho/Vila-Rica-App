@@ -92,9 +92,11 @@ export default function RegisterScreen() {
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 201) {
-        // if (data.user) {
-        // }
-        alert("Sucesso - Morador cadastrado.");
+        alert(
+          data.initialPasswordEmailSent === false
+            ? "Morador cadastrado, mas não foi possível enviar o email com a senha temporária."
+            : "Sucesso - Morador cadastrado.",
+        );
         router.push("/residents");
         return;
       }
@@ -314,14 +316,6 @@ export default function RegisterScreen() {
           <Text style={styles.cancelButtonText}>Cancelar</Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        style={styles.bellFab}
-        onPress={() => alert("Funcionalidade em desenvolvimento...")}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.bellIcon}>🔔</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }

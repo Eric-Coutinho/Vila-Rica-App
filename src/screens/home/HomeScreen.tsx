@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -42,7 +43,8 @@ const QUICK_BUTTONS_SINDICO: Record<string, string> = {
   "/entrance": "Portaria",
   "/residents": "Moradores",
   "/change-manager": "Alterar Síndico",
-  "/costs-report": "Relatórios",
+  "https://charts.mongodb.com/charts-vilaricaapp-rtrdqtv/dashboards":
+    "Relatórios",
   "/chatbot": "Chatbot",
 };
 
@@ -153,6 +155,12 @@ export default function HomeScreen() {
               style={styles.quickButton}
               activeOpacity={0.8}
               onPress={() => {
+                if (route.startsWith("https://")) {
+                  Linking.openURL(route).catch(() =>
+                    alert("Não foi possível abrir os relatórios."),
+                  );
+                  return;
+                }
                 router.push(route as any);
               }}
             >
@@ -167,16 +175,6 @@ export default function HomeScreen() {
           roleTitle && ["sindico", "admin", "adm"].includes(roleTitle),
         )}
       />
-
-      <TouchableOpacity
-        style={styles.bellFab}
-        onPress={() => {
-          alert("Funcionalidade em desenvolvimento...");
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.bellIcon}>🔔</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
