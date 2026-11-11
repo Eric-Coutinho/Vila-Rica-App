@@ -42,7 +42,7 @@ const QUICK_BUTTONS_SINDICO: Record<string, string> = {
   "/entrance": "Portaria",
   "/residents": "Moradores",
   "/change-manager": "Alterar Síndico",
-  "/costs-report": "Relatório de custos",
+  "/costs-report": "Relatórios",
   "/chatbot": "Chatbot",
 };
 
