@@ -20,6 +20,7 @@ export async function sendSupportMessage(
   message: string,
   conversationId?: string,
   quickReplyKey?: string,
+  showLoading = true,
 ): Promise<SupportChatResponse> {
   const response = await apiFetch(
     "/support/chat",
@@ -28,37 +29,46 @@ export async function sendSupportMessage(
       body: JSON.stringify({ message, conversationId, quickReplyKey }),
     },
     true,
+    showLoading,
   );
 
   return (await readBody(response)) as SupportChatResponse;
 }
 
-export async function getCurrentSupportConversation(): Promise<SupportConversation | null> {
+export async function getCurrentSupportConversation(
+  showLoading = true,
+): Promise<SupportConversation | null> {
   const response = await apiFetch(
     "/support/conversations/current",
     { method: "GET" },
     true,
+    showLoading,
   );
   const body = await readBody(response);
   return body.conversation || null;
 }
 
-export async function startNewSupportConversation(): Promise<SupportConversation> {
+export async function startNewSupportConversation(
+  showLoading = true,
+): Promise<SupportConversation> {
   const response = await apiFetch(
     "/support/conversations/new",
     { method: "POST" },
     true,
+    showLoading,
   );
   return (await readBody(response)).conversation as SupportConversation;
 }
 
 export async function escalateSupportConversation(
   id: string,
+  showLoading = true,
 ): Promise<SupportConversation> {
   const response = await apiFetch(
     `/support/conversations/${id}/escalate`,
     { method: "POST" },
     true,
+    showLoading,
   );
   return (await readBody(response)).conversation as SupportConversation;
 }

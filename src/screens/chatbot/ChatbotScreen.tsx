@@ -90,7 +90,7 @@ function ResidentChat() {
   const loadConversation = useCallback(() => {
     let active = true;
     setLoading(true);
-    getCurrentSupportConversation()
+    getCurrentSupportConversation(false)
       .then((item) => active && setConversation(item))
       .catch(() => active && setConversation(null))
       .finally(() => active && setLoading(false));
@@ -111,6 +111,7 @@ function ResidentChat() {
         text,
         conversation?.id,
         quickReplyKey,
+        false,
       );
       setConversation(result.conversation);
     } catch (error) {
@@ -144,7 +145,7 @@ function ResidentChat() {
     if (sending) return;
     setSending(true);
     try {
-      setConversation(await startNewSupportConversation());
+      setConversation(await startNewSupportConversation(false));
     } finally {
       setSending(false);
     }
@@ -154,7 +155,9 @@ function ResidentChat() {
     if (!conversation || conversation.status || sending) return;
     setSending(true);
     try {
-      setConversation(await escalateSupportConversation(conversation.id));
+      setConversation(
+        await escalateSupportConversation(conversation.id, false),
+      );
     } finally {
       setSending(false);
     }

@@ -1,5 +1,6 @@
 import { API_BASE_URL, ApiError, apiFetch } from "./api";
 import { getAccessToken } from "./session";
+import { withLoading } from "./loadingController";
 
 export type ApartmentResident = {
   id: string;
@@ -110,11 +111,13 @@ export async function importResidentsSpreadsheet(file: FormData): Promise<{
   const token = await getAccessToken();
   if (!token)
     throw new ApiError("Sessão não encontrada. Faça login novamente.", 401);
-  const response = await fetch(`${API_BASE_URL}/auth/import-users`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: file,
-  });
+  const response = await withLoading(() =>
+    fetch(`${API_BASE_URL}/auth/import-users`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: file,
+    }),
+  );
   return readBody(response);
 }
 

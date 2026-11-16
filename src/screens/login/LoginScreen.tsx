@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Modal,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { styles } from "./styles";
 import { apiFetch, getErrorMessage } from "../../services/api";
 import { saveTwoFactorEmail } from "../../services/session";
@@ -129,11 +122,7 @@ const LoginScreen: React.FC = () => {
             activeOpacity={0.8}
             disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator /> // Criar componente com esse loading
-            ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
-            )}
+            <Text style={styles.buttonText}>Entrar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -146,14 +135,6 @@ const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
-      <Modal transparent visible={loading} animationType="fade">
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" />
-            <Text style={styles.loadingText}>Verificando login...</Text>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };

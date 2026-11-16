@@ -1,4 +1,5 @@
 import { clearSession, getAccessToken } from "./session";
+import { beginLoading } from "./loadingController";
 
 const configuredBaseUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
 
@@ -20,6 +21,7 @@ export async function apiFetch(
   path: string,
   options: RequestInit = {},
   authenticated = false,
+  showLoading = true,
 ): Promise<Response> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
@@ -36,17 +38,22 @@ export async function apiFetch(
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
-    ...options,
-    headers,
-  });
+  const endLoading = showLoading ? beginLoading() : undefined;
+  try {
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
+      ...options,
+      headers,
+    });
 
-  if (authenticated && response.status === 401) {
-    await clearSession();
+    if (authenticated && response.status === 401) {
+      await clearSession();
+    }
+
+    return response;
+  } finally {
+    endLoading?.();
   }
-
-  return response;
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {
@@ -55,4 +62,3 @@ export function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
   return fallback;
 }
-

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 
 import { ApiError, getErrorMessage } from "../../services/api";
+import { useAppDialog } from "../../components/AppFeedbackProvider";
 import {
   addComplaintMessage,
   deleteComplaint,
@@ -67,6 +68,7 @@ const formatMessageTime = (value: string) => {
 
 export default function ComplaintDetailScreen() {
   const router = useRouter();
+  const { showDialog } = useAppDialog();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const complaintId = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -186,21 +188,14 @@ export default function ComplaintDetailScreen() {
       }
     };
 
-    if (Platform.OS === "web") {
-      if (globalThis.confirm("Deseja realmente excluir esta reclamação?")) {
-        void remove();
-      }
-      return;
-    }
-
-    Alert.alert(
-      "Excluir reclamação",
-      "Deseja realmente excluir esta reclamação?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => void remove() },
-      ],
-    );
+    showDialog({
+      title: "Excluir reclamação",
+      text: "Deseja realmente excluir esta reclamação?",
+      cancelText: "Cancelar",
+      confirmText: "Excluir",
+      showCancel: true,
+      onConfirm: () => void remove(),
+    });
   };
 
   if (loading) {

@@ -2,8 +2,9 @@ import { Inter_400Regular } from "@expo-google-fonts/inter";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { Stack, useRouter } from "expo-router";
-import { Alert, Pressable } from "react-native";
+import { Pressable } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import AppFeedbackProvider, { useAppDialog } from "../src/components/AppFeedbackProvider";
 import { clearSession } from "../src/services/session";
 
 export default function RootLayout() {
@@ -17,36 +18,24 @@ export default function RootLayout() {
 
   function LogoutButton() {
     const router = useRouter();
+    const { showDialog } = useAppDialog();
 
     const handleLogout = async () => {
       const confirmLogout = async () => {
         try {
           await clearSession();
           router.replace("/");
-        } catch {
-          Alert.alert("Erro", "Não foi possível encerrar a sessão.");
-        }
+        } catch { showDialog({ title: "Erro", text: "Não foi possível encerrar a sessão.", showCancel: false, confirmText: "OK" }); }
       };
 
-      if (typeof window !== "undefined") {
-        const confirmed = window.confirm("Deseja realmente sair?");
-        if (confirmed) {
-          confirmLogout();
-        }
-        return;
-      }
-
-      Alert.alert("Sair", "Deseja realmente sair?", [
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
-        {
-          text: "Sair",
-          style: "destructive",
-          onPress: confirmLogout,
-        },
-      ]);
+      showDialog({
+        title: "Sair",
+        text: "Deseja realmente sair?",
+        cancelText: "Cancelar",
+        confirmText: "Sair",
+        showCancel: true,
+        onConfirm: () => void confirmLogout(),
+      });
     };
 
     return (
@@ -65,6 +54,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppFeedbackProvider>
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: "#343346" },
@@ -409,6 +399,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      </AppFeedbackProvider>
     </GestureHandlerRootView>
   );
 }

@@ -18,6 +18,7 @@ type ConfirmModalProps = {
   cancelText?: string;
   confirmText?: string;
   loading?: boolean;
+  showCancel?: boolean;
 };
 
 export default function ConfirmModal({
@@ -29,6 +30,7 @@ export default function ConfirmModal({
   cancelText = "Cancelar",
   confirmText = "Confirmar",
   loading = false,
+  showCancel = true,
 }: ConfirmModalProps) {
   return (
     <Modal
@@ -43,25 +45,21 @@ export default function ConfirmModal({
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>
-            {title}
-          </Text>
+          <Text style={styles.modalTitle}>{title}</Text>
 
-          <Text style={styles.modalText}>
-            {text}
-          </Text>
+          <Text style={styles.modalText}>{text}</Text>
 
           <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onCancel}
-              activeOpacity={0.85}
-              disabled={loading}
-            >
-              <Text style={styles.cancelButtonText}>
-                {cancelText}
-              </Text>
-            </TouchableOpacity>
+            {showCancel && (
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={onCancel}
+                activeOpacity={0.85}
+                disabled={loading}
+              >
+                <Text style={styles.cancelButtonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.confirmButton}
@@ -72,9 +70,7 @@ export default function ConfirmModal({
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.confirmButtonText}>
-                  {confirmText}
-                </Text>
+                <Text style={styles.confirmButtonText}>{confirmText}</Text>
               )}
             </TouchableOpacity>
           </View>
