@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +12,7 @@ import {
 import { styles } from "./styles";
 import ApartmentSection from "./ApartmentSection";
 import { getStoredUser } from "../../services/session";
+import { getDeliveryBadge } from "../../services/deliveryService";
 
 const QUICK_BUTTONS_MORADORES: Record<string, string> = {
   "/party-saloon": "Salão de Festas",
@@ -56,6 +57,7 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [roleTitle, setRoleTitle] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
+  const [deliveryBadge, setDeliveryBadge] = useState(0);
 
   const [quickButtons, setQuickButtons] = useState<Record<string, string>>(
     QUICK_BUTTONS_MORADORES,
@@ -130,6 +132,29 @@ export default function HomeScreen() {
     };
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      let mounted = true;
+      void (async () => {
+        try {
+          const user = await getStoredUser();
+          const role = String(user?.role || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+          if (role === "morador" && mounted)
+            setDeliveryBadge(await getDeliveryBadge());
+          else if (mounted) setDeliveryBadge(0);
+        } catch {
+          if (mounted) setDeliveryBadge(0);
+        }
+      })();
+      return () => {
+        mounted = false;
+      };
+    }, []),
+  );
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -165,6 +190,13 @@ export default function HomeScreen() {
               }}
             >
               <Text style={styles.quickButtonText}>{label}</Text>
+              {route === "/deliveries" && deliveryBadge > 0 && (
+                <View style={styles.deliveryBadge}>
+                  <Text style={styles.deliveryBadgeText}>
+                    {deliveryBadge > 99 ? "99+" : deliveryBadge}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </View>
@@ -175,6 +207,16 @@ export default function HomeScreen() {
           roleTitle && ["sindico", "admin", "adm"].includes(roleTitle),
         )}
       />
+
+      <TouchableOpacity
+        style={styles.bellFab}
+        onPress={() => {
+          alert("Funcionalidade em desenvolvimento...");
+        }}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.bellIcon}>🔔</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
