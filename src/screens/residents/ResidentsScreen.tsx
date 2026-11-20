@@ -50,7 +50,7 @@ export default function ResidentsScreen() {
       setLoading(true);
 
       const response = await apiFetch(
-        "/auth/list-users",
+        "/auth/list-users?role=morador",
         {
           method: "GET",
         },

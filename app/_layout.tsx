@@ -156,6 +156,28 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="entrance"
+            options={{
+              title: "Vila Rica Residencial",
+              headerTitleStyle: {
+                fontFamily: "Inter",
+                fontSize: 24,
+                fontWeight: "800",
+              },
+            }}
+          />
+          <Stack.Screen
+            name="register-porter"
+            options={{
+              title: "Vila Rica Residencial",
+              headerTitleStyle: {
+                fontFamily: "Inter",
+                fontSize: 24,
+                fontWeight: "800",
+              },
+            }}
+          />
+          <Stack.Screen
             name="residents"
             options={{
               title: "Vila Rica Residencial",
