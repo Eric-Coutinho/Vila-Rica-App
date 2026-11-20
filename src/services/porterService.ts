@@ -1,5 +1,7 @@
 import { apiFetch, ApiError } from "./api";
 
+export type WeeklyShift = { days: number[]; start: string; end: string };
+
 export type Porter = {
   _id: string;
   name?: string;
@@ -7,8 +9,9 @@ export type Porter = {
   cpf?: string;
   birthDate?: string;
   schedule?: string;
+  weeklySchedule?: WeeklyShift[];
 };
-export type NewPorter = Required<Omit<Porter, "_id">>;
+export type NewPorter = Required<Omit<Porter, "_id" | "schedule">>;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await apiFetch("/auth/" + path, options, true);
@@ -44,12 +47,15 @@ export function createPorter(fields: NewPorter) {
   });
 }
 
-export async function updateSchedule(id: string, schedule: string) {
+export async function updateSchedule(
+  id: string,
+  weeklySchedule: WeeklyShift[],
+) {
   const data = await request<{ user: Porter }>(
     "users/update/" + encodeURIComponent(id),
     {
       method: "PATCH",
-      body: JSON.stringify({ schedule }),
+      body: JSON.stringify({ weeklySchedule }),
     },
   );
   return data.user;

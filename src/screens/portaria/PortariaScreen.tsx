@@ -12,9 +12,14 @@ import {
   listPorters,
   updateSchedule,
   type Porter,
+  type WeeklyShift,
 } from "../../services/porterService";
 import { useAppDialog } from "../../components/AppFeedbackProvider";
 import { styles } from "./PortariaScreenStyles";
+import WeeklyScheduleEditor, {
+  blankShift,
+  describeShift,
+} from "./WeeklyScheduleEditor";
 
 const nameKey = (value: string) =>
   value
@@ -33,7 +38,7 @@ export default function PortariaScreen() {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [editing, setEditing] = useState("");
-  const [schedule, setSchedule] = useState("");
+  const [schedule, setSchedule] = useState<WeeklyShift[]>([]);
   const [saving, setSaving] = useState(false);
   const [reload, setReload] = useState(0);
 
@@ -61,10 +66,10 @@ export default function PortariaScreen() {
   );
 
   async function save() {
-    if (!schedule.trim() || saving) return;
+    if (saving) return;
     setSaving(true);
     try {
-      const updated = await updateSchedule(editing, schedule.trim());
+      const updated = await updateSchedule(editing, schedule);
       setRows((current) =>
         current.map((row) => (row._id === updated._id ? updated : row)),
       );
@@ -133,19 +138,18 @@ export default function PortariaScreen() {
                 </Text>
                 {editing === row._id ? (
                   <View style={styles.editor}>
-                    <Text style={styles.selectLabel}>Escala</Text>
-                    <TextInput
-                      style={styles.nameInput}
-                      accessibilityLabel="Nova escala"
-                      multiline
+                    {!!row.schedule && !row.weeklySchedule?.length && (
+                      <Text style={styles.cardSmall}>
+                        Escala anterior: {row.schedule}
+                      </Text>
+                    )}
+                    <WeeklyScheduleEditor
                       value={schedule}
-                      onChangeText={setSchedule}
-                      maxLength={250}
-                      autoFocus
+                      change={setSchedule}
                     />
                     <TouchableOpacity
                       style={styles.cardButton}
-                      disabled={!schedule.trim() || saving}
+                      disabled={saving}
                       onPress={() => void save()}
                     >
                       <Text style={styles.cardButtonText}>Salvar escala</Text>
@@ -161,13 +165,21 @@ export default function PortariaScreen() {
                 ) : (
                   <>
                     <Text style={styles.cardSmall}>
-                      Escala: {row.schedule || "Não informada"}
+                      Escala:{" "}
+                      {row.weeklySchedule?.length
+                        ? "\n" +
+                          row.weeklySchedule.map(describeShift).join("\n")
+                        : row.schedule || "Não informada"}
                     </Text>
                     <TouchableOpacity
                       style={styles.cardButton}
                       disabled={saving}
                       onPress={() => {
-                        setSchedule(row.schedule || "");
+                        setSchedule(
+                          row.weeklySchedule?.length
+                            ? row.weeklySchedule
+                            : [blankShift()],
+                        );
                         setEditing(row._id);
                       }}
                     >
