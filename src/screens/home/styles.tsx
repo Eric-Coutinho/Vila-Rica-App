@@ -47,6 +47,7 @@ export const styles = StyleSheet.create({
     width: "48%",
     alignItems: "center",
     position: "relative",
+    justifyContent: "center",
   },
   quickButtonText: {
     color: "#fff",
