@@ -1,0 +1,68 @@
+import { Platform, StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  page: {
+    padding: 16,
+    paddingBottom: 36,
+    backgroundColor: "#fff",
+    flexGrow: 1,
+  },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    textAlign: "center",
+    marginVertical: 18,
+  },
+  form: {
+    backgroundColor: "#fafafa",
+    borderColor: "#dedede",
+    borderWidth: 1,
+    borderRadius: 9,
+    padding: 14,
+  },
+  label: { fontWeight: "700", marginBottom: 6, marginTop: 10 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#888",
+    borderRadius: 5,
+    backgroundColor: "#fff",
+    paddingHorizontal: 10,
+    paddingVertical: Platform.OS === "web" ? 10 : 8,
+    fontSize: 16,
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: "#888",
+    borderRadius: 5,
+    backgroundColor: "#fff",
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+  },
+  textarea: { minHeight: 130, textAlignVertical: "top" },
+  pickerWrap: {
+    borderWidth: 1,
+    borderColor: "#888",
+    borderRadius: 5,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+  picker: { height: 46 },
+  createButton: {
+    marginTop: 22,
+    backgroundColor: "#466CA5",
+    borderRadius: 7,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  createButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  cancelButton: {
+    marginTop: 10,
+    borderRadius: 7,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#777",
+  },
+  cancelButtonText: { fontWeight: "700" },
+});

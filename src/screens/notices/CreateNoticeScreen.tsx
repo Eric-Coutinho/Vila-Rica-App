@@ -1,0 +1,553 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import { styles } from "./createNoticeStyles";
+import { apiFetch, getErrorMessage } from "../../services/api";
+import { getStoredUser } from "../../services/session";
+
+type Referente = {
+  id: string;
+  type: "Bloco" | "Apartamento" | "Morador" | "Todos";
+  value: string;
+};
+
+type Resident = {
+  _id: string;
+  name: string;
+  bloco?: string;
+  apartamento?: string;
+  [k: string]: any;
+};
+
+export default function NovoAviso() {
+  const router = useRouter();
+
+  const [title, setTitle] = useState("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  const [description, setDescription] = useState("");
+  const [refType, setRefType] = useState<Referente["type"] | null>(null);
+  const [refValue, setRefValue] = useState<string | null>(null);
+  const [referentes, setReferentes] = useState<Referente[]>([]);
+
+  const [isSindico, setIsSindico] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [loadingResidents, setLoadingResidents] = useState(false);
+  const [fetchedResidents, setFetchedResidents] = useState(false);
+
+  const blocos = Array.from({ length: 7 }, (_, i) => String(i + 1));
+  const aptos = Array.from({ length: 32 }, (_, i) => String(i + 1));
+
+  function onChangeDateMobile(setter: (d: Date | null) => void) {
+    return function (_e: any, selected?: Date) {
+      if (Platform.OS !== "ios") {
+        setShowStartPicker(false);
+        setShowEndPicker(false);
+      }
+      if (selected) setter(selected);
+    };
+  }
+
+  function onChangeDateWeb(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (d: Date | null) => void,
+  ) {
+    const val = e.target.value;
+    if (!val) {
+      setter(null);
+      return;
+    }
+    const [y, m, d] = val.split("-").map(Number);
+    setter(new Date(y, m - 1, d));
+  }
+
+  function formatDate(d: Date | null) {
+    if (!d) return "";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  function formatDateISO(d: Date | null) {
+    if (!d) return undefined;
+    return d.toISOString();
+  }
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadUser() {
+      try {
+        const u = await getStoredUser();
+        if (!u) {
+          if (mounted) setIsSindico(false);
+          return;
+        }
+        const role = String(u?.role || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+        if (mounted) setIsSindico(["sindico", "admin", "adm"].includes(role));
+      } catch {
+        if (mounted) setIsSindico(false);
+      } finally {
+        if (mounted) setLoadingUser(false);
+      }
+    }
+    loadUser();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchResidents() {
+      if (fetchedResidents || refType !== "Morador") return;
+      setLoadingResidents(true);
+      try {
+        const res = await apiFetch(
+          "/auth/list-users",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+          true,
+        );
+        if (!res.ok) throw new Error("Falha ao buscar moradores");
+        const body = await res.json();
+        if (!mounted) return;
+        const usersArray: any[] = Array.isArray(body) ? body : body.users || [];
+
+        const mapped: Resident[] = usersArray.map((u: any) => ({
+          _id: u._id,
+          name: u.name,
+          bloco: u.bloco,
+          apartamento: u.apartamento,
+          ...u,
+        }));
+
+        setResidents(mapped);
+        setFetchedResidents(true);
+      } catch {
+      } finally {
+        if (mounted) setLoadingResidents(false);
+      }
+    }
+    fetchResidents();
+    return () => {
+      mounted = false;
+    };
+  }, [refType, fetchedResidents]);
+
+  function addReferente() {
+    if (referentes.some((r) => r.type === "Todos")) {
+      return alert(
+        "Já existe um referente 'Todos'. Remova-o para adicionar outros referentes.",
+      );
+    }
+
+    if (!refType) return alert("Atenção - Selecione o tipo de referente.");
+
+    if (refType === "Todos") {
+      const newRef: Referente = {
+        id: String(Date.now()),
+        type: "Todos",
+        value: "Todos",
+      };
+      setReferentes((s) => [...s, newRef]);
+      setRefType(null);
+      setRefValue(null);
+      return;
+    }
+
+    if (refType === "Bloco") {
+      if (!refValue) return alert("Atenção - Selecione o número do bloco.");
+      const newRef: Referente = {
+        id: String(Date.now()),
+        type: "Bloco",
+        value: String(refValue),
+      };
+      setReferentes((s) => [...s, newRef]);
+      setRefType(null);
+      setRefValue(null);
+      return;
+    }
+
+    if (refType === "Apartamento") {
+      if (!refValue)
+        return alert("Atenção - Selecione o número do apartamento.");
+      const newRef: Referente = {
+        id: String(Date.now()),
+        type: "Apartamento",
+        value: String(refValue),
+      };
+      setReferentes((s) => [...s, newRef]);
+      setRefType(null);
+      setRefValue(null);
+      return;
+    }
+
+    if (refType === "Morador") {
+      if (!refValue) return alert("Atenção - Selecione um morador.");
+      const newRef: Referente = {
+        id: String(Date.now()),
+        type: "Morador",
+        value: String(refValue),
+      };
+      setReferentes((s) => [...s, newRef]);
+      setRefType(null);
+      setRefValue(null);
+      return;
+    }
+  }
+
+  function removeReferente(id: string) {
+    setReferentes((s) => s.filter((r) => r.id !== id));
+  }
+
+  async function handleCreate() {
+    if (!title.trim()) return alert("Erro - Título é obrigatório.");
+    if (!startDate) return alert("Erro - Data início é obrigatória.");
+    if (referentes.length === 0)
+      return alert("Erro - Adicione ao menos um referente.");
+    if (!isSindico) {
+      return alert("Acesso negado - Apenas Síndico pode criar avisos.");
+    }
+
+    const referentePayload = referentes.map((r) => {
+      if (r.type === "Todos") return { kind: "Todos" };
+
+      if (r.type === "Bloco") return { kind: "Bloco", refId: String(r.value) };
+
+      if (r.type === "Apartamento")
+        return { kind: "Apartamento", refId: String(r.value) };
+
+      if (r.type === "Morador")
+        return { kind: "Morador", refId: String(r.value) };
+
+      return { kind: "Todos" };
+    });
+
+    const payload = {
+      title: title.trim(),
+      description: description.trim(),
+      status: "active",
+      startDate: formatDateISO(startDate),
+      endDate: endDate ? formatDateISO(endDate) : undefined,
+      referente: referentePayload,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const res = await apiFetch(
+        "/notices",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+        true,
+      );
+      if (res.status === 201 || res.ok) {
+        alert("Sucesso - Aviso criado.");
+        router.push("/notices");
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      alert(`Erro ${data.message || "Falha ao criar aviso."}`);
+    } catch (error) {
+      alert(
+        `Erro - ${getErrorMessage(error, "Não foi possível criar o aviso")}`,
+      );
+    }
+  }
+
+  if (loadingUser) {
+    return (
+      <View style={styles.centered}>
+        <Text>Carregando...</Text>
+      </View>
+    );
+  }
+
+  function showReferentes() {
+    const text =
+      referentes.length > 0
+        ? `Referentes\n${referentes
+            .map((r) => `${r.type}: ${r.value}`)
+            .join("\n")}`
+        : "Referentes\nNenhum referente adicionado.";
+
+    if (Platform.OS === "web") {
+      alert(text);
+    } else {
+      alert(`Referentes - ${text}`);
+    }
+  }
+
+  const hasTodos = referentes.some((r) => r.type === "Todos");
+
+  return (
+    <ScrollView contentContainerStyle={styles.page}>
+      <Text style={styles.headerTitle}>Novo Aviso</Text>
+
+      <View style={styles.formCard}>
+        <Text style={styles.label}>Título</Text>
+        <TextInput
+          placeholder="Título do aviso"
+          placeholderTextColor="#9b9b9b"
+          value={title}
+          onChangeText={setTitle}
+          style={styles.input}
+        />
+
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>
+              Data Início <Text style={{ color: "#cc0000" }}>*</Text>
+            </Text>
+
+            {Platform.OS === "web" ? (
+              <input
+                type="date"
+                value={startDate ? startDate.toISOString().slice(0, 10) : ""}
+                onChange={(e) => onChangeDateWeb(e as any, setStartDate)}
+                style={styles.webDateInput as any}
+              />
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => setShowStartPicker(true)}
+                >
+                  <Text style={{ color: startDate ? "#000" : "#777" }}>
+                    {startDate ? formatDate(startDate) : "dd/mm/aaaa"}
+                  </Text>
+                </TouchableOpacity>
+                {showStartPicker && (
+                  <DateTimePicker
+                    value={startDate ?? new Date()}
+                    mode="date"
+                    display="default"
+                    maximumDate={new Date(2100, 11, 31)}
+                    onChange={onChangeDateMobile((d) => setStartDate(d))}
+                  />
+                )}
+              </>
+            )}
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Data Fim</Text>
+            {Platform.OS === "web" ? (
+              <input
+                type="date"
+                value={endDate ? endDate.toISOString().slice(0, 10) : ""}
+                onChange={(e) => onChangeDateWeb(e as any, setEndDate)}
+                style={styles.webDateInput as any}
+              />
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => setShowEndPicker(true)}
+                >
+                  <Text style={{ color: endDate ? "#000" : "#777" }}>
+                    {endDate ? formatDate(endDate) : "dd/mm/aaaa"}
+                  </Text>
+                </TouchableOpacity>
+                {showEndPicker && (
+                  <DateTimePicker
+                    value={endDate ?? new Date()}
+                    mode="date"
+                    display="default"
+                    maximumDate={new Date(2100, 11, 31)}
+                    onChange={onChangeDateMobile((d) => setEndDate(d))}
+                  />
+                )}
+              </>
+            )}
+          </View>
+        </View>
+
+        <Text style={[styles.label, { marginTop: 12 }]}>
+          Descrição do aviso
+        </Text>
+        <TextInput
+          placeholder="Descrição (500 caracteres)"
+          placeholderTextColor="#9b9b9b"
+          value={description}
+          onChangeText={(t) => setDescription(t)}
+          style={[styles.input, styles.textarea]}
+          multiline
+          numberOfLines={6}
+        />
+
+        <Text style={[styles.label, { marginTop: 12 }]}>Referente a:</Text>
+
+        {!hasTodos ? (
+          <View style={styles.refRow}>
+            <View>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={refType}
+                  onValueChange={(v) => {
+                    setRefType(v as Referente["type"]);
+                    setRefValue(null);
+                  }}
+                  mode="dropdown"
+                  style={[
+                    styles.selectElement,
+                    { color: refType ? "#000" : "#9b9b9b" },
+                  ]}
+                >
+                  <Picker.Item label="Tipo" value={null} />
+                  <Picker.Item label="Todos" value="Todos" />
+                  <Picker.Item label="Bloco" value="Bloco" />
+                  <Picker.Item label="Apartamento" value="Apartamento" />
+                  <Picker.Item label="Morador" value="Morador" />
+                </Picker>
+              </View>
+            </View>
+
+            <View style={{ flex: 1, marginBottom: 8 }}>
+              {refType ? (
+                <>
+                  {refType === "Bloco" && (
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={refValue}
+                        onValueChange={(v) => setRefValue(String(v))}
+                        mode="dropdown"
+                        style={[
+                          styles.selectElement,
+                          { color: refValue ? "#000" : "#9b9b9b" },
+                        ]}
+                      >
+                        <Picker.Item label="Bloco" value={null} />
+                        {blocos.map((b) => (
+                          <Picker.Item key={b} label={b} value={b} />
+                        ))}
+                      </Picker>
+                    </View>
+                  )}
+
+                  {refType === "Apartamento" && (
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={refValue}
+                        onValueChange={(v) => setRefValue(String(v))}
+                        mode="dropdown"
+                        style={[
+                          styles.selectElement,
+                          { color: refValue ? "#000" : "#9b9b9b" },
+                        ]}
+                      >
+                        <Picker.Item label="Apartamento" value={null} />
+                        {aptos.map((a) => (
+                          <Picker.Item key={a} label={a} value={a} />
+                        ))}
+                      </Picker>
+                    </View>
+                  )}
+
+                  {refType === "Morador" &&
+                    (loadingResidents ? (
+                      <View style={{ padding: 12 }}>
+                        <Text>Carregando moradores...</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.pickerWrapper}>
+                        <Picker
+                          selectedValue={refValue}
+                          onValueChange={(v) => setRefValue(String(v))}
+                          mode="dropdown"
+                          style={[
+                            styles.selectElement,
+                            { color: refValue ? "#000" : "#9b9b9b" },
+                          ]}
+                        >
+                          <Picker.Item
+                            label="Selecione um morador"
+                            value={null}
+                          />
+                          {residents.map((u) => {
+                            const label = `${u.name} (${u.bloco ?? "–"}/${
+                              u.apartamento ?? "–"
+                            })`;
+                            return (
+                              <Picker.Item
+                                key={u._id}
+                                label={label}
+                                value={u._id}
+                              />
+                            );
+                          })}
+                        </Picker>
+                      </View>
+                    ))}
+                </>
+              ) : null}
+            </View>
+
+            <TouchableOpacity style={styles.addRefBtn} onPress={addReferente}>
+              <Text style={styles.addRefBtnText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <></>
+        )}
+
+        <TouchableOpacity style={styles.viewRefsBtn} onPress={showReferentes}>
+          <Text style={styles.viewRefsText}>Ver Referentes</Text>
+        </TouchableOpacity>
+
+        <View style={{ marginTop: 14 }}>
+          {referentes.map((r) => (
+            <View key={r.id} style={styles.refChip}>
+              <Text style={styles.refChipText}>
+                {r.type}: {r.value}
+              </Text>
+              <TouchableOpacity onPress={() => removeReferente(r.id)}>
+                <Text style={styles.refRemove}>Remover</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.createBtn} onPress={handleCreate}>
+          <Text style={styles.createBtnText}>Criar Aviso</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={() => {
+            router.push("/notices");
+          }}
+        >
+          <Text style={styles.cancelBtnText}>Cancelar</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+}

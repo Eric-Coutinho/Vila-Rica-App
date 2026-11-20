@@ -1,0 +1,1 @@
+export { default } from "../src/screens/2FA/TwoFAScreen";
