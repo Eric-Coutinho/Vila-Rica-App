@@ -11,6 +11,7 @@ import {
 
 import { styles } from "./styles";
 import ApartmentSection from "./ApartmentSection";
+import PorterScheduleSection from "./PorterScheduleSection";
 import { getStoredUser } from "../../services/session";
 import { getDeliveryBadge } from "../../services/deliveryService";
 
@@ -22,7 +23,7 @@ const QUICK_BUTTONS_MORADORES: Record<string, string> = {
   "/deliveries": "Encomendas",
   "/moving": "Mudanças",
   "/contact-manager": "Falar com Síndico",
-  "/chatbot": "Chatbot de suporte",
+  "/chatbot": "Chatbot",
 };
 
 const QUICK_BUTTONS_FUNCIONARIOS: Record<string, string> = {
@@ -114,7 +115,7 @@ export default function HomeScreen() {
 
         if (["sindico", "admin", "adm"].includes(role)) {
           setQuickButtons(QUICK_BUTTONS_SINDICO);
-        } else if (role === "funcionario") {
+        } else if (role === "funcionario" || role === "porteiro") {
           setQuickButtons(QUICK_BUTTONS_FUNCIONARIOS);
         } else {
           setQuickButtons(QUICK_BUTTONS_MORADORES);
@@ -202,11 +203,14 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <ApartmentSection
-        manager={Boolean(
-          roleTitle && ["sindico", "admin", "adm"].includes(roleTitle),
-        )}
-      />
+      {roleTitle !== undefined &&
+        (roleTitle === "funcionario" || roleTitle === "porteiro" ? (
+          <PorterScheduleSection />
+        ) : (
+          <ApartmentSection
+            manager={["sindico", "admin", "adm"].includes(roleTitle)}
+          />
+        ))}
 
       <TouchableOpacity
         style={styles.bellFab}

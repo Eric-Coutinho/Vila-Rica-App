@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from "./api";
+import { getStoredUser } from "./session";
 
 export type WeeklyShift = { days: number[]; start: string; end: string };
 
@@ -12,6 +13,7 @@ export type Porter = {
   weeklySchedule?: WeeklyShift[];
 };
 export type NewPorter = Required<Omit<Porter, "_id" | "schedule">>;
+export type PorterSchedule = Pick<Porter, "weeklySchedule" | "schedule">;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await apiFetch("/auth/" + path, options, true);
@@ -22,6 +24,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       response.status,
     );
   return data;
+}
+
+export async function getMyPorterSchedule(): Promise<PorterSchedule> {
+  const me = await getStoredUser();
+  if (!me?._id) throw new Error("Entre novamente para consultar sua escala.");
+  const { user } = await request<{ user: Porter }>(
+    "users/get/" + encodeURIComponent(me._id),
+  );
+  return { weeklySchedule: user.weeklySchedule, schedule: user.schedule };
 }
 
 export async function listPorters() {
