@@ -465,6 +465,18 @@ export default function RootLayout() {
               },
             }}
           />
+          <Stack.Screen
+            name="contact-manager"
+            options={{ title: "Vila Rica Residencial" }}
+          />
+          <Stack.Screen
+            name="messages"
+            options={{ title: "Vila Rica Residencial" }}
+          />
+          <Stack.Screen
+            name="messages/[id]"
+            options={{ title: "Vila Rica Residencial" }}
+          />
         </Stack>
       </AppFeedbackProvider>
     </GestureHandlerRootView>
