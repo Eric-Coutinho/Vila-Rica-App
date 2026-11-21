@@ -14,6 +14,8 @@ import ApartmentSection from "./ApartmentSection";
 import PorterScheduleSection from "./PorterScheduleSection";
 import { getStoredUser } from "../../services/session";
 import { getDeliveryBadge } from "../../services/deliveryService";
+import { unreadChatCount } from "../../services/directMessageService";
+import { useFocusedRefresh } from "../directMessages/useFocusedRefresh";
 
 const QUICK_BUTTONS_MORADORES: Record<string, string> = {
   "/party-saloon": "Salão de Festas",
@@ -23,7 +25,7 @@ const QUICK_BUTTONS_MORADORES: Record<string, string> = {
   "/deliveries": "Encomendas",
   "/moving": "Mudanças",
   "/contact-manager": "Falar com Síndico",
-  "/chatbot": "Chatbot",
+  "/chatbot": "Chatbot de suporte",
 };
 
 const QUICK_BUTTONS_FUNCIONARIOS: Record<string, string> = {
@@ -32,7 +34,7 @@ const QUICK_BUTTONS_FUNCIONARIOS: Record<string, string> = {
   "/deliveries": "Encomendas",
   "/moving": "Mudanças",
   "/contact-manager": "Falar com Síndico",
-  "/clock-in": "Ponto",
+  // "/clock-in": "Ponto",
 };
 
 const QUICK_BUTTONS_SINDICO: Record<string, string> = {
@@ -44,10 +46,10 @@ const QUICK_BUTTONS_SINDICO: Record<string, string> = {
   "/moving": "Mudanças",
   "/entrance": "Portaria",
   "/residents": "Moradores",
-  "/change-manager": "Alterar Síndico",
+  "/messages": "Mensagens",
+  "/chatbot": "Chatbot",
   "https://charts.mongodb.com/charts-vilaricaapp-rtrdqtv/dashboards":
     "Relatórios",
-  "/chatbot": "Chatbot",
 };
 
 export default function HomeScreen() {
@@ -59,6 +61,19 @@ export default function HomeScreen() {
   const [roleTitle, setRoleTitle] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [deliveryBadge, setDeliveryBadge] = useState(0);
+  const [messageBadge, setMessageBadge] = useState(0);
+  useFocusedRefresh(
+    React.useCallback(async (visible) => {
+      try {
+        const count = await unreadChatCount();
+        if (visible()) setMessageBadge(count);
+      } catch {
+        // Keep the last known count until the next refresh.
+      }
+    }, []),
+    ["sindico", "admin", "adm"].includes(roleTitle || ""),
+    10000,
+  );
 
   const [quickButtons, setQuickButtons] = useState<Record<string, string>>(
     QUICK_BUTTONS_MORADORES,
@@ -191,6 +206,16 @@ export default function HomeScreen() {
               }}
             >
               <Text style={styles.quickButtonText}>{label}</Text>
+              {route === "/messages" && messageBadge > 0 && (
+                <View
+                  accessibilityLabel={messageBadge + " conversas não lidas"}
+                  style={styles.deliveryBadge}
+                >
+                  <Text style={styles.deliveryBadgeText}>
+                    {messageBadge > 99 ? "99+" : messageBadge}
+                  </Text>
+                </View>
+              )}
               {route === "/deliveries" && deliveryBadge > 0 && (
                 <View style={styles.deliveryBadge}>
                   <Text style={styles.deliveryBadgeText}>
@@ -212,15 +237,6 @@ export default function HomeScreen() {
           />
         ))}
 
-      <TouchableOpacity
-        style={styles.bellFab}
-        onPress={() => {
-          alert("Funcionalidade em desenvolvimento...");
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.bellIcon}>🔔</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
