@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -53,7 +54,7 @@ export default function CreateMovingReservationScreen() {
         company: company.trim(),
       });
       alert("Reserva de mudança criada com sucesso.");
-      router.replace("/moving");
+      router.dismissTo(parentRoutes["create-moving-reservation"]);
     } catch (error) {
       alert(
         `Erro - ${getErrorMessage(error, "Não foi possível criar a reserva.")}`,
@@ -197,7 +198,9 @@ export default function CreateMovingReservationScreen() {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.cancelButton}
-        onPress={() => router.back()}
+        onPress={() =>
+          router.dismissTo(parentRoutes["create-moving-reservation"])
+        }
         disabled={saving}
       >
         <Text style={styles.actionText}>Cancelar</Text>

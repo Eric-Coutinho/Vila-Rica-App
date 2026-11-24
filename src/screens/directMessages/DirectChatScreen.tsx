@@ -182,7 +182,7 @@ export default function DirectChatScreen({
           )}
         />
         {!!sendError && <Text style={s.error}>{sendError}</Text>}
-        <View style={manager ? s.managerComposer : s.composer}>
+        <View style={s.composer}>
           <View style={s.inputRow}>
             <View style={s.inputBox}>
               <Text
@@ -220,7 +220,7 @@ export default function DirectChatScreen({
               />
             </Pressable>
           </View>
-          {manager && (
+          {/* {manager && (
             <Pressable
               style={s.button}
               accessibilityRole="button"
@@ -229,7 +229,7 @@ export default function DirectChatScreen({
             >
               <Text style={s.buttonText}>Adicionar Resposta</Text>
             </Pressable>
-          )}
+          )} */}
         </View>
       </View>
     </KeyboardAvoidingView>

@@ -2,7 +2,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Linking,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -48,8 +47,7 @@ const QUICK_BUTTONS_SINDICO: Record<string, string> = {
   "/residents": "Moradores",
   "/messages": "Mensagens",
   "/chatbot": "Chatbot",
-  "https://charts.mongodb.com/charts-vilaricaapp-rtrdqtv/dashboards":
-    "Relatórios",
+  "/reports": "Relatórios",
 };
 
 export default function HomeScreen() {
@@ -196,12 +194,6 @@ export default function HomeScreen() {
               style={styles.quickButton}
               activeOpacity={0.8}
               onPress={() => {
-                if (route.startsWith("https://")) {
-                  Linking.openURL(route).catch(() =>
-                    alert("Não foi possível abrir os relatórios."),
-                  );
-                  return;
-                }
                 router.push(route as any);
               }}
             >

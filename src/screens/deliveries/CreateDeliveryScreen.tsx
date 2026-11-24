@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -34,8 +35,7 @@ export default function CreateDeliveryScreen() {
         bloco: block.trim(),
         apartamento: unit.trim(),
       });
-      if (router.canGoBack()) router.back();
-      else router.replace("/deliveries");
+      router.dismissTo(parentRoutes["create-delivery"]);
     } catch (err) {
       setError(getErrorMessage(err, "Falha ao registrar a encomenda."));
     } finally {
@@ -87,7 +87,7 @@ export default function CreateDeliveryScreen() {
         title="Cancelar"
         cancel
         disabled={busy}
-        onPress={() => router.back()}
+        onPress={() => router.dismissTo(parentRoutes["create-delivery"])}
       />
       {open && (
         <Sheet title="Selecionar destinatário" close={() => setOpen(false)}>

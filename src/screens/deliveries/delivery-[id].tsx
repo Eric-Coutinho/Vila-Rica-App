@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import { Ionicons } from "@expo/vector-icons";
 import { styles as complaintStyles } from "../complaints/complaint-idStyles";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -60,7 +61,7 @@ export default function DeliveryDetailScreen() {
         text: getErrorMessage(error, "Não foi possível carregar a reclamação."),
         showCancel: false,
         confirmText: "OK",
-        onConfirm: () => router.back(),
+        onConfirm: () => router.dismissTo(parentRoutes["deliveries/[id]"]),
       });
     }
   }, [id, router, showDialog]);

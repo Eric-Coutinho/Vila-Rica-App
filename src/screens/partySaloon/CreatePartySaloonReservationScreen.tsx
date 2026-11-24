@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -242,7 +243,7 @@ export default function CreatePartySaloonScreen() {
 
       alert("Sucesso - Reserva criada.");
 
-      router.push("/party-saloon");
+      router.dismissTo(parentRoutes["create-party-saloon-reservation"]);
     } catch (error) {
       console.error("Erro ao criar reserva:", error);
 
@@ -504,7 +505,9 @@ export default function CreatePartySaloonScreen() {
       <TouchableOpacity
         style={styles.cancelButton}
         disabled={loading}
-        onPress={() => router.back()}
+        onPress={() =>
+          router.dismissTo(parentRoutes["create-party-saloon-reservation"])
+        }
       >
         <Text style={styles.cancelButtonText}>Cancelar</Text>
       </TouchableOpacity>

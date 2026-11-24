@@ -1,13 +1,14 @@
+import { useIsFocused } from "@react-navigation/native";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { apiFetch } from "../../services/api";
@@ -45,7 +46,9 @@ export default function MeetingsScreen() {
   const [statusFilter, setStatusFilter] = useState<"" | AssemblyStatus>("");
   const [descriptionFilter, setDescriptionFilter] = useState("");
 
+  const focused = useIsFocused();
   useEffect(() => {
+    if (!focused) return;
     let active = true;
     async function load() {
       try {
@@ -71,7 +74,7 @@ export default function MeetingsScreen() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [focused]);
 
   const filtered = assemblies.filter((assembly) => {
     const matchesDate =

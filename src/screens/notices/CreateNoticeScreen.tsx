@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -270,7 +271,7 @@ export default function NovoAviso() {
       );
       if (res.status === 201 || res.ok) {
         alert("Sucesso - Aviso criado.");
-        router.push("/notices");
+        router.dismissTo(parentRoutes["create-notice"]);
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -542,7 +543,7 @@ export default function NovoAviso() {
         <TouchableOpacity
           style={styles.cancelBtn}
           onPress={() => {
-            router.push("/notices");
+            router.dismissTo(parentRoutes["create-notice"]);
           }}
         >
           <Text style={styles.cancelBtnText}>Cancelar</Text>

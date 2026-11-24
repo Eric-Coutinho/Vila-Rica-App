@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
@@ -235,7 +236,7 @@ export default function ResidentDetailScreen() {
         [
           {
             text: "Voltar",
-            onPress: () => router.back(),
+            onPress: () => router.dismissTo(parentRoutes["residents/[id]"]),
           },
         ],
       );
@@ -349,7 +350,7 @@ export default function ResidentDetailScreen() {
 
       alert("Sucesso, os dados do morador foram atualizados com sucesso.");
       setShowUpdateModal(false);
-      router.push("/residents");
+      router.dismissTo(parentRoutes["residents/[id]"]);
     } catch (error: any) {
       console.error("Erro ao atualizar morador:", error);
 
@@ -363,7 +364,7 @@ export default function ResidentDetailScreen() {
 
   const handleCancelar = () => {
     if (!isEditing) {
-      router.back();
+      router.dismissTo(parentRoutes["residents/[id]"]);
       return;
     }
 
@@ -415,7 +416,7 @@ export default function ResidentDetailScreen() {
         `Sucesso, ${resident?.name ?? "Morador"} foi excluído com sucesso.`,
       );
 
-      router.back();
+      router.dismissTo(parentRoutes["residents/[id]"]);
     } catch {
       alert("Erro, não foi possível excluir o morador.");
     } finally {

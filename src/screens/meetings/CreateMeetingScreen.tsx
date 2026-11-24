@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -45,13 +46,13 @@ export default function CreateMeetingScreen() {
         if (!active) return;
         if (!isManager(user?.role)) {
           alert("Acesso negado - apenas o síndico pode criar assembléias.");
-          router.replace("/meetings");
+          router.dismissTo(parentRoutes["create-meeting"]);
           return;
         }
         setCheckingAccess(false);
       })
       .catch(() => {
-        if (active) router.replace("/meetings");
+        if (active) router.dismissTo(parentRoutes["create-meeting"]);
       });
     return () => {
       active = false;
@@ -85,7 +86,7 @@ export default function CreateMeetingScreen() {
         return;
       }
       alert("Assembléia criada com sucesso.");
-      router.replace("/meetings");
+      router.dismissTo(parentRoutes["create-meeting"]);
     } catch (error) {
       alert(
         `Erro - ${getErrorMessage(error, "Não foi possível criar a assembléia.")}`,
@@ -166,7 +167,7 @@ export default function CreateMeetingScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={() => router.back()}
+          onPress={() => router.dismissTo(parentRoutes["create-meeting"])}
           disabled={saving}
         >
           <Text style={styles.cancelButtonText}>Cancelar</Text>

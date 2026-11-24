@@ -8,8 +8,10 @@ import AppFeedbackProvider, {
   useAppDialog,
 } from "../src/components/AppFeedbackProvider";
 import { clearSession } from "../src/services/session";
+import { parentForScreen } from "../src/navigation/parentRoutes";
 
 export default function RootLayout() {
+  const router = useRouter();
   const [fontsLoaded] = useFonts({
     Inter: Inter_400Regular,
   });
@@ -65,9 +67,25 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppFeedbackProvider>
         <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: "#343346" },
-            headerTintColor: "white",
+          screenOptions={({ route }) => {
+            const parent = parentForScreen(route.name);
+            return {
+              headerStyle: { backgroundColor: "#343346" },
+              headerTintColor: "white",
+              headerBackVisible: false,
+              headerLeft: () =>
+                parent ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Voltar"
+                    hitSlop={8}
+                    style={{ padding: 6, marginRight: 8 }}
+                    onPress={() => router.dismissTo(parent)}
+                  >
+                    <MaterialIcons name="arrow-back" size={25} color="white" />
+                  </Pressable>
+                ) : null,
+            };
           }}
         >
           <Stack.Screen
@@ -464,6 +482,10 @@ export default function RootLayout() {
                 fontWeight: 800,
               },
             }}
+          />
+          <Stack.Screen
+            name="reports"
+            options={{ title: "Vila Rica Residencial" }}
           />
           <Stack.Screen
             name="contact-manager"

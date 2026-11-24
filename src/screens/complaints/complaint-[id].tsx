@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -177,7 +178,7 @@ export default function ComplaintDetailScreen() {
       try {
         await deleteComplaint(complaint.id);
         Alert.alert("Sucesso", "Reclamação excluída.");
-        router.replace("/complaints");
+        router.dismissTo(parentRoutes["complaints/[id]"]);
       } catch (error) {
         Alert.alert(
           "Erro",
@@ -215,7 +216,7 @@ export default function ComplaintDetailScreen() {
         </Text>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.replace("/complaints")}
+          onPress={() => router.dismissTo(parentRoutes["complaints/[id]"])}
         >
           <Text style={styles.buttonText}>Voltar</Text>
         </TouchableOpacity>
@@ -432,7 +433,9 @@ export default function ComplaintDetailScreen() {
                   {complaint.involved.apartments.map((apartment) => (
                     <View key={apartment.id} style={styles.apartmentItem}>
                       <Text style={styles.apartmentText}>
-                        Apartamento {apartment.apartamento}
+                        {apartment.apartamento === "Todos"
+                          ? "Todos os apartamentos"
+                          : "Apartamento " + apartment.apartamento}
                       </Text>
                       <Text style={styles.apartmentText}>
                         Bloco {apartment.bloco}

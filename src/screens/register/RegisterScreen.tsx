@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -97,7 +98,7 @@ export default function RegisterScreen() {
             ? "Morador cadastrado, mas não foi possível enviar o email com a senha temporária."
             : "Sucesso - Morador cadastrado.",
         );
-        router.push("/residents");
+        router.dismissTo(parentRoutes["register"]);
         return;
       }
 
@@ -310,7 +311,7 @@ export default function RegisterScreen() {
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => {
-            router.back();
+            router.dismissTo(parentRoutes["register"]);
           }}
         >
           <Text style={styles.cancelButtonText}>Cancelar</Text>
