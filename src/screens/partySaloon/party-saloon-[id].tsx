@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -262,7 +263,7 @@ export default function PartySaloonDetailScreen() {
   const closeMessageModal = () => {
     const leavePage = messageModal.leavePage;
     setMessageModal((current) => ({ ...current, visible: false }));
-    if (leavePage) router.replace("/party-saloon");
+    if (leavePage) router.dismissTo(parentRoutes["party-saloon/[id]"]);
   };
 
   return (

@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
@@ -88,8 +89,7 @@ export default function RegisterPorterScreen() {
         schedule: form.schedule.trim(),
         birthDate: iso,
       });
-      if (router.canGoBack()) router.back();
-      else router.replace("/entrance");
+      router.dismissTo(parentRoutes["register-porter"]);
       showDialog({
         title: "Porteiro cadastrado",
         text: result.initialPasswordEmailSent
@@ -168,9 +168,7 @@ export default function RegisterPorterScreen() {
       </TouchableOpacity>
       <TouchableOpacity
         disabled={busy}
-        onPress={() =>
-          router.canGoBack() ? router.back() : router.replace("/entrance")
-        }
+        onPress={() => router.dismissTo(parentRoutes["register-porter"])}
       >
         <Text style={styles.cancel}>Cancelar</Text>
       </TouchableOpacity>

@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
@@ -204,7 +205,7 @@ export default function CreateComplaintScreen() {
       });
 
       Alert.alert("Sucesso", "Reclamação registrada.");
-      router.replace("/complaints");
+      router.dismissTo(parentRoutes["create-complaint"]);
     } catch (error) {
       Alert.alert(
         "Erro",
@@ -428,7 +429,7 @@ export default function CreateComplaintScreen() {
       <TouchableOpacity
         style={styles.cancelButton}
         activeOpacity={0.85}
-        onPress={() => router.back()}
+        onPress={() => router.dismissTo(parentRoutes["create-complaint"])}
         disabled={saving}
       >
         <Text style={styles.primaryButtonText}>Cancelar</Text>

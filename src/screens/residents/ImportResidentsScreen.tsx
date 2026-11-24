@@ -1,3 +1,4 @@
+import { parentRoutes } from "../../navigation/parentRoutes";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -147,7 +148,7 @@ export default function ImportResidentsScreen() {
       ) : null}
       <TouchableOpacity
         style={styles.cancelButton}
-        onPress={() => router.back()}
+        onPress={() => router.dismissTo(parentRoutes["residents/import"])}
       >
         <Text style={styles.cancelButtonText}>Voltar</Text>
       </TouchableOpacity>

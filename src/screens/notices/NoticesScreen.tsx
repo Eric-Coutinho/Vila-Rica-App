@@ -1,3 +1,4 @@
+import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -62,7 +63,9 @@ export default function NoticesScreen() {
     };
   }, []);
 
+  const focused = useIsFocused();
   useEffect(() => {
+    if (!focused) return;
     let mounted = true;
     async function fetchNotices() {
       setLoading(true);
@@ -140,7 +143,7 @@ export default function NoticesScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [focused]);
 
   if (loading) {
     return (
