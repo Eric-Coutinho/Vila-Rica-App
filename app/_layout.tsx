@@ -466,6 +466,10 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="reports"
+            options={{ title: "Vila Rica Residencial" }}
+          />
+          <Stack.Screen
             name="contact-manager"
             options={{ title: "Vila Rica Residencial" }}
           />

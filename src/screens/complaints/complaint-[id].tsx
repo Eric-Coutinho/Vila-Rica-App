@@ -432,7 +432,9 @@ export default function ComplaintDetailScreen() {
                   {complaint.involved.apartments.map((apartment) => (
                     <View key={apartment.id} style={styles.apartmentItem}>
                       <Text style={styles.apartmentText}>
-                        Apartamento {apartment.apartamento}
+                        {apartment.apartamento === "Todos"
+                          ? "Todos os apartamentos"
+                          : "Apartamento " + apartment.apartamento}
                       </Text>
                       <Text style={styles.apartmentText}>
                         Bloco {apartment.bloco}

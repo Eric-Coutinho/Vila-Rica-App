@@ -28,7 +28,11 @@ import type {
 } from "../../types/complaint";
 import { styles } from "./CreateComplaintStyles";
 
-type InvolvedType = "resident" | "apartment";
+type InvolvedType = "resident" | "apartment" | "block";
+const formatApartment = (a: ComplaintApartment) =>
+  a.apartamento === "Todos"
+    ? "Bloco " + a.bloco + " inteiro"
+    : "Apartamento " + a.apartamento + ", Bloco " + a.bloco;
 
 const toDateInputValue = (date: Date | null) => {
   if (!date) return "";
@@ -77,10 +81,7 @@ export default function CreateComplaintScreen() {
   const selectedInvolvedLabel = useMemo(() => {
     const parts = [
       ...residents.map((resident) => resident.name),
-      ...apartments.map(
-        (apartment) =>
-          `Apartamento ${apartment.apartamento}, Bloco ${apartment.bloco}`,
-      ),
+      ...apartments.map(formatApartment),
     ];
 
     return parts.length > 0 ? parts.join(", ") : "Apartamento / Morador...";
@@ -142,9 +143,15 @@ export default function CreateComplaintScreen() {
       setResidentSearchPerformed(false);
     } else {
       const bloco = apartmentBlock.trim();
-      const apartamento = apartmentNumber.trim();
+      const apartamento =
+        involvedType === "block" ? "Todos" : apartmentNumber.trim();
       if (!bloco || !apartamento) {
-        Alert.alert("Atenção", "Informe o bloco e o apartamento.");
+        Alert.alert(
+          "Atenção",
+          involvedType === "block"
+            ? "Informe o bloco."
+            : "Informe o bloco e o apartamento.",
+        );
         return;
       }
 
@@ -311,7 +318,7 @@ export default function CreateComplaintScreen() {
             {apartments.map((apartment) => (
               <View key={apartment.id} style={styles.chip}>
                 <Text style={styles.chipText}>
-                  Ap. {apartment.apartamento} / Bl. {apartment.bloco}
+                  {formatApartment(apartment)}
                 </Text>
                 <TouchableOpacity
                   accessibilityLabel={`Remover apartamento ${apartment.apartamento}`}
@@ -453,6 +460,7 @@ export default function CreateComplaintScreen() {
                 style={styles.picker}
               >
                 <Picker.Item label="Apartamento" value="apartment" />
+                <Picker.Item label="Bloco inteiro" value="block" />
                 <Picker.Item label="Morador" value="resident" />
               </Picker>
             </View>
@@ -545,16 +553,18 @@ export default function CreateComplaintScreen() {
                     placeholderTextColor="#888"
                   />
                 </View>
-                <View style={styles.apartmentField}>
-                  <Text style={styles.label}>Apartamento</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={apartmentNumber}
-                    onChangeText={setApartmentNumber}
-                    placeholder="Apartamento"
-                    placeholderTextColor="#888"
-                  />
-                </View>
+                {involvedType === "apartment" && (
+                  <View style={styles.apartmentField}>
+                    <Text style={styles.label}>Apartamento</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={apartmentNumber}
+                      onChangeText={setApartmentNumber}
+                      placeholder="Apartamento"
+                      placeholderTextColor="#888"
+                    />
+                  </View>
+                )}
               </View>
             )}
 
