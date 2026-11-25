@@ -1,4 +1,3 @@
-import { parentRoutes } from "../../navigation/parentRoutes";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -11,10 +10,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { parentRoutes } from "../../navigation/parentRoutes";
 
-import { styles } from "./createNoticeStyles";
 import { apiFetch, getErrorMessage } from "../../services/api";
 import { getStoredUser } from "../../services/session";
+import { styles } from "./createNoticeStyles";
 
 type Referente = {
   id: string;
@@ -500,7 +500,7 @@ export default function NovoAviso() {
                               <Picker.Item
                                 key={u._id}
                                 label={label}
-                                value={u._id}
+                                value={`${u.name} (${u.bloco ?? "–"}/${u.apartamento ?? "–"})`}
                               />
                             );
                           })}

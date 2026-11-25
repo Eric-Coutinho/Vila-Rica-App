@@ -10,9 +10,9 @@ import {
   View,
 } from "react-native";
 
-import { styles } from "./noticeStyle";
 import { apiFetch } from "../../services/api";
 import { getStoredUser } from "../../services/session";
+import { styles } from "./noticeStyle";
 
 type Aviso = {
   id: string;
@@ -112,7 +112,7 @@ export default function NoticesScreen() {
             else if (String(kind).toLowerCase().includes("apart"))
               reference = `Apartamento ${refId || ""}`.trim();
             else if (String(kind).toLowerCase().includes("morad"))
-              reference = `Morador ${refId || ""}`.trim();
+              reference = `Morador ${r.name || ""}`.trim();
             else reference = kind;
           }
 
